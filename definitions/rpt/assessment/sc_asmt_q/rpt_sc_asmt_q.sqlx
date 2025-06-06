@@ -1,0 +1,53 @@
+config {
+  type: "incremental",
+  protected: true,
+  uniqueKey: ["assessment_id","study_circle_id","question_id"],
+  dependencies: ["df_prerpt_sc_asmt_q_dimensions"]
+}
+pre_operations {
+    SET @@query_label =
+      "step:rpt_sc_asmt_q, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+
+SELECT  
+    -- primary keys
+      preasmtq.assessment_id
+    , preasmtq.study_circle_id
+    , preasmtq.question_id
+
+    -- assessment dimensions
+    , predim.assessment_board_id 
+
+    -- questions dimensions
+    , predim.question_sequence_number
+    , predim.question_image_path
+    , predim.question_objective_name
+    , predim.question_difficulty_level
+    , predim.question_type_name
+    , predim.question_access_level
+    , predim.question_author
+    , predim.answer_json
+    , predim.question_reference
+    , predim.study_circle_ref_parent_gsc_id
+
+    -- count measures
+    , preasmtq.count_correct_responses 
+    , preasmtq.count_incorrect_responses 
+    , preasmtq.count_near_correct_responses 
+    , preasmtq.count_not_answered_responses 
+
+    -- count measures gsc
+    , preasmtq.count_correct_responses_gsc 
+    , preasmtq.count_near_correct_responses_gsc 
+    , preasmtq.count_incorrect_responses_gsc 
+    , preasmtq.count_not_answered_responses_gsc 
+
+    -- audit fields
+    , preasmtq.ts
+
+FROM readanalytics.df_prerpt_sc_asmt_q preasmtq
+LEFT JOIN readanalytics.df_prerpt_sc_asmt_q_dimensions predim 
+ON preasmtq.assessment_id = predim.assessment_id
+AND preasmtq.study_circle_id = predim.study_circle_id
+AND preasmtq.question_id = predim.question_id 

@@ -1,0 +1,14 @@
+config {
+    type: "operations",
+    dependencies: [
+          "update_avg_topicwise_velocity"
+        , "update_window_rpt_sc_asmt_q"
+        , "rpt_sc_asmt_q_stu"
+        , "update_avg_topicwise_velocity_stu"
+    ]
+}
+SET @@query_label =
+  "step:end_assessment_load, " ||
+  "batch_id: ${dataform.projectConfig.vars.batch_id}";
+
+SELECT 1 AS VALUE

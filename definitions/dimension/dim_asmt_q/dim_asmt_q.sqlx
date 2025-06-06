@@ -1,0 +1,36 @@
+config {
+  type: "table",
+  dependencies: ["begin_dimension_load"]
+}
+pre_operations {
+    SET @@query_label =
+      "step:dim_asmt_q, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+SELECT 
+    a.id AS assessment_id
+  , gseq.group_session_id
+  , gseq.question_id
+  , q.subject_id AS question_subject_id
+  , ms.display_name as question_subject_name
+  , q.sub_subject_id AS question_sub_subject_id
+  , q.topic_1_id AS question_topic_id
+  , q.sub_topic_1_id AS question_sub_topic_id
+  , q.objective_id AS question_objective_id
+  , q.difficulty_level AS question_difficulty_level
+  , rank() over(PARTITION BY gseq.group_session_id  ORDER BY max(question_asked_time) ASC ) AS question_sequence
+FROM readanalytics.stucle_group_session_educator_question gseq 
+LEFT JOIN readanalytics.assessment a ON a.group_session_id = gseq.group_session_id
+LEFT JOIN readanalytics.qb_question q ON q.id = gseq.question_id
+LEFT JOIN `readanalytics.master_subject` ms ON q.subject_id = ms.id
+GROUP BY 
+          group_session_id
+        , question_id 
+        , assessment_id
+        , question_subject_id
+        , question_subject_name
+        , question_sub_subject_id
+        , question_topic_id
+        , question_sub_topic_id
+        , question_objective_id
+        , question_difficulty_level

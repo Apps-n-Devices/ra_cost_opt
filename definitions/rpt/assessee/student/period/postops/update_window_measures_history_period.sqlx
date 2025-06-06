@@ -1,0 +1,49 @@
+config {
+  type: "operations",
+  dependencies: ["update_window_attr_derived_stu_period","update_window_attr_stu_month"]
+}
+SET @@query_label =
+  "step:update_window_measures_history_period, " ||
+  "batch_id: ${dataform.projectConfig.vars.batch_id}";
+
+UPDATE `readanalytics.rpt_sc_stu_rac_period` rper
+SET rper.window_measures_history = rmon.window_measures_history
+FROM 
+(SELECT  
+   rmon.dim_ra_cube_id,
+   rmon.study_circle_id,
+   rmon.student_id,
+   map.id AS assessment_academic_period_id,
+ARRAY_AGG(STRUCT(
+    assessment_month
+  , w_rank_stu_in_sc
+  , w_count_student_in_sc
+  , w_rank_stu_in_gsc
+  , w_count_student_in_gsc
+  , (1 - w_rank_stu_in_gsc / w_count_student_in_gsc)*100 as percentile_gsc
+  )
+  ORDER BY assessment_month DESC
+) as window_measures_history
+FROM `readanalytics.rpt_sc_stu_rac_month` rmon
+LEFT JOIN `readanalytics.master_study_circle` msc ON rmon.study_circle_id = msc.id
+LEFT JOIN  readanalytics.master_course mc ON mc.id = msc.ref_course_id AND mc.is_active = true
+LEFT JOIN readanalytics.master_academic_period map ON map.board_id = mc.board_id AND map.is_active=true
+AND rmon.assessment_month >= map.start_date AND rmon.assessment_month <= map.end_date
+WHERE count_present_responses >0
+   AND rmon.assessment_month IS NOT NULL
+GROUP BY
+   -- --primary keys
+   dim_ra_cube_id,
+   study_circle_id,
+   student_id,
+   assessment_academic_period_id
+) rmon
+
+   WHERE 
+   rper.dim_ra_cube_id = rmon.dim_ra_cube_id
+   AND rper.study_circle_id = rmon.study_circle_id
+   AND rper.student_id = rmon.student_id
+   AND rper.assessment_academic_period_id = rmon.assessment_academic_period_id
+   AND rper.assessment_academic_period_id >=(SELECT tbl.min_assessment_academic_period_id FROM `readanalytics.df_vars_dimkeys_stg_raft_ar` tbl)
+   AND rper.assessment_academic_period_id<=(SELECT tbl.max_assessment_academic_period_id FROM `readanalytics.df_vars_dimkeys_stg_raft_ar` tbl)
+   AND rper.assessment_academic_period_id IS NOT NULL

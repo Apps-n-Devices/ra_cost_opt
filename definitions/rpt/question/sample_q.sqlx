@@ -1,0 +1,8 @@
+config {
+    type: "operations",
+    dependencies: ["end_rpt_update"]
+}
+SET @@query_label =
+  "step:sample_q, " ||
+  "batch_id: ${dataform.projectConfig.vars.batch_id}";
+SELECT 1 AS VALUE

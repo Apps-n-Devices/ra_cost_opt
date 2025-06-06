@@ -1,0 +1,86 @@
+
+config {
+  type: "incremental",
+  protected: true,
+  uniqueKey: ["assessment_id", "student_id", "question_id"],
+  dependencies: ["readanalytics_df_dimkeys_stg_raft_ar_assertions_rowConditions"
+                ,"chk_df_dimkeys_stg_raft_ar__rowcount","chk_df_dimkeys_stg_raft_ar__valid_data", "df_vars_dimkeys_stg_raft_ar"]
+}
+pre_operations {
+    SET @@query_label =
+      "step:fact_ar, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+-- merge records from inter_dimkeys_stg_raft_ap table
+SELECT  
+    -- --meta dimensions
+    stg_id
+    , batch_id
+
+    -- --date dimensions
+    , assessment_date
+    , assessment_month
+    , assessment_year
+    , assessment_academic_period_id
+
+    -- --assessment dimensions
+    , assessment_id
+    , assessment_mode_id
+    , assessment_type_id
+    , assessment_organizer_id
+    , assessment_group_session_id
+    , assessment_group_study_circle_id
+    , assessment_subject_id
+    , assessment_topic_id
+    , assessment_board_id 
+
+    -- --institution dimensions
+    , institution_id
+    , study_circle_id
+    , perf_group_study_circle_id
+  
+    -- --student dimensions
+    , student_id
+    , study_circle_student_id
+
+    -- --question dimensions
+    , question_id
+    , question_subject_id
+    , question_sub_subject_id
+    , question_topic_id
+    , question_sub_topic_id
+    , question_objective_id
+    , question_difficulty_level
+   
+    -- -- score scheme dimension
+    , score_scheme_id
+
+    -- --response dimensions
+    , perf_response AS response
+    , perf_result AS result
+
+    -- --performance measures
+    , perf_time_taken AS sum_response_time_taken
+    , perf_score AS sum_response_main_score
+    , perf_accuracy AS sum_response_accuracy_score
+    , perf_speed AS sum_response_speed_score
+    , perf_difficulty AS sum_response_difficulty_score
+    , perf_velocity AS sum_response_velocity
+ 
+
+    --count measures
+    , perf_count AS count_total_responses
+    , perf_correct_count AS count_correct_responses
+    , perf_incorrect_count AS count_incorrect_responses
+    , perf_near_correct_count AS count_near_correct_responses
+    , perf_not_answered_count AS count_not_answered_responses
+    , perf_absent_count AS count_absent_responses
+    , perf_present_count AS count_present_responses
+
+    -- --audit fields
+    , ts
+   
+   -- --handraise count
+    , NULL as count_hand_raises
+
+FROM readanalytics.df_dimkeys_stg_raft_ar

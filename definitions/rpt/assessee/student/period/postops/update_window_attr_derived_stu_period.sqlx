@@ -1,0 +1,38 @@
+config {
+  type: "operations",
+  dependencies: ["update_window_attr_stu_period"]
+}
+SET @@query_label =
+  "step:update_window_attr_derived_stu_period, " ||
+  "batch_id: ${dataform.projectConfig.vars.batch_id}";
+
+UPDATE readanalytics.rpt_sc_stu_rac_period rper
+SET
+rper.w_avg_response_velocity_sc = rperattrd.w_avg_response_velocity_sc,
+rper.w_avg_response_velocity_gsc = rperattrd.w_avg_response_velocity_gsc,
+rper.w_avg_response_accuracy_score_gsc = rperattrd.w_avg_response_accuracy_score_gsc,
+rper.w_avg_response_main_score_gsc = rperattrd.w_avg_response_main_score_gsc,
+rper.w_avg_response_time_taken_gsc = rperattrd.w_avg_response_time_taken_gsc,
+rper.w_percentile_student_gsc = rperattrd.w_percentile_student_gsc
+FROM(
+SELECT 
+    rper.student_id 
+	, rper.study_circle_id 
+	, rper.dim_ra_cube_id 
+	, rper.assessment_academic_period_id 
+    , readanalytics.safe_avg( w_sum_response_velocity_sc, w_count_present_responses_sc) AS w_avg_response_velocity_sc
+  , readanalytics.safe_avg( w_sum_response_velocity_gsc, w_count_present_responses_gsc) AS w_avg_response_velocity_gsc
+  , readanalytics.safe_avg( w_sum_response_accuracy_score_gsc, w_count_present_responses_gsc) AS w_avg_response_accuracy_score_gsc
+  , readanalytics.safe_avg( w_sum_response_main_score_gsc, w_count_present_responses_gsc) AS w_avg_response_main_score_gsc
+  , readanalytics.safe_avg( w_sum_response_time_taken_gsc, w_count_answered_responses_gsc) AS w_avg_response_time_taken_gsc
+  , ((1 - rper.w_rank_stu_in_gsc / rper.w_count_student_in_gsc) * 100) AS w_percentile_student_gsc
+FROM `readanalytics.rpt_sc_stu_rac_period` rper
+WHERE count_present_responses > 0
+    AND rper.assessment_academic_period_id IS NOT NULL
+) AS rperattrd
+WHERE 
+    rper.dim_ra_cube_id = rperattrd.dim_ra_cube_id
+    AND rper.student_id = rperattrd.student_id
+    AND rper.study_circle_id = rperattrd.study_circle_id
+    AND rper.assessment_academic_period_id = rperattrd.assessment_academic_period_id
+    AND rper.assessment_academic_period_id IS NOT NULL

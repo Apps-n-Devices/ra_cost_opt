@@ -1,0 +1,39 @@
+config {
+    type: "operations",
+    dependencies: ["rpt_sc_asmt_stu",]
+}
+SET @@query_label =
+  "step:update_topicwise_velocity_stu, " ||
+  "batch_id: ${dataform.projectConfig.vars.batch_id}";
+
+UPDATE `readanalytics.rpt_sc_asmt_stu` rasmt
+SET rasmt.sum_response_velocity_topic = rasmtt.sum_response_velocity_topic
+, rasmt.count_present_responses_topic = rasmtt.count_present_responses_topic
+FROM
+(
+SELECT 
+  asmt.study_circle_id
+, asmt.assessment_id
+, asmt.student_id
+, SUM(topic_asmt.sum_response_velocity) AS sum_response_velocity_topic
+, SUM(topic_asmt.count_present_responses) AS count_present_responses_topic
+FROM readanalytics.rpt_sc_asmt_stu asmt 
+LEFT JOIN UNNEST(asmt.arr_assessments) unnest_topic_asmt
+LEFT JOIN readanalytics.rpt_sc_asmt_stu topic_asmt 
+  ON asmt.study_circle_id = topic_asmt.study_circle_id
+  AND unnest_topic_asmt.assessment_id = topic_asmt.assessment_id
+  AND topic_asmt.student_id = asmt.student_id
+LEFT JOIN `readanalytics.assessment` a ON a.id = asmt.assessment_id 
+WHERE a.assessment_date >=(SELECT tbl.min_assessment_date FROM `readanalytics.df_vars_dimkeys_stg_raft_ar` tbl)
+AND a.assessment_date<=(SELECT tbl.max_assessment_date FROM `readanalytics.df_vars_dimkeys_stg_raft_ar` tbl) 
+GROUP BY 
+  asmt.study_circle_id
+, asmt.assessment_id
+, asmt.student_id
+) rasmtt
+LEFT JOIN `readanalytics.assessment` a ON a.id = rasmtt.assessment_id 
+WHERE rasmt.study_circle_id = rasmtt.study_circle_id
+AND rasmt.assessment_id = rasmtt.assessment_id
+AND rasmt.student_id = rasmtt.student_id
+AND a.assessment_date >=(SELECT tbl.min_assessment_date FROM `readanalytics.df_vars_dimkeys_stg_raft_ar` tbl)
+AND a.assessment_date<=(SELECT tbl.max_assessment_date FROM `readanalytics.df_vars_dimkeys_stg_raft_ar` tbl) 

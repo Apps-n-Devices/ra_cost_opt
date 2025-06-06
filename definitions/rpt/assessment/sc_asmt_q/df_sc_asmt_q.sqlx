@@ -1,0 +1,32 @@
+config {
+  type: "table",
+  dependencies: ["begin_assessment_load"]
+}
+pre_operations {
+    SET @@query_label =
+      "step:df_sc_asmt_q, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+
+SELECT  
+    -- primary keys
+      assessment_id
+    , study_circle_id
+    , question_id
+   
+    -- count measures
+    , SUM(count_correct_responses) AS count_correct_responses  
+    , SUM(count_incorrect_responses) AS count_incorrect_responses
+    , SUM(count_near_correct_responses) AS count_near_correct_responses  
+    , SUM(count_not_answered_responses) AS count_not_answered_responses
+    
+    -- audit fields
+    , MAX(ts) AS ts
+
+FROM readanalytics.fact_ar fact
+WHERE fact.ts > '${dataform.projectConfig.vars.batch_start_ts}' AND fact.ts <= '${dataform.projectConfig.vars.batch_end_ts}'
+GROUP BY
+    -- primary keys
+    assessment_id,
+    study_circle_id,
+    question_id

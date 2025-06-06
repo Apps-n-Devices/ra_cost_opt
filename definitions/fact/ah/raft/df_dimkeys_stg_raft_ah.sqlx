@@ -1,0 +1,75 @@
+config {
+  type: "table",
+  assertions: {
+    nonNull: ["stg_id", "batch_id", "assessment_date","assessment_month","assessment_year"
+    , "assessment_academic_period_id","assessment_id","assessment_mode_id","assessment_type_id"
+    , "assessment_organizer_id","assessment_group_session_id","assessment_group_study_circle_id"
+    , "assessment_subject_id","assessment_topic_id","assessment_board_id","institution_id"
+    , "study_circle_id","perf_group_study_circle_id","student_id"
+    , "question_id","question_subject_id","question_sub_subject_id","question_topic_id"
+    , "question_sub_topic_id","question_objective_id","question_difficulty_level","handraise_time"
+    , ,"handraise_count","ts"]
+  }
+}
+pre_operations {
+    SET @@query_label =
+      "step:df_dimkeys_stg_raft_ah, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+SELECT  
+    -- --meta dimensions
+    uah.stg_id as stg_id
+  , CAST(('${dataform.projectConfig.vars.batch_id}') AS INT64) as batch_id
+
+    -- --date dimensions
+  , uah.assessment_date
+  , DATE_TRUNC(uah.assessment_date, MONTH) AS assessment_month
+  , DATE_TRUNC(uah.assessment_date, YEAR) AS assessment_year
+  , mip.id AS assessment_academic_period_id
+
+    -- --assessment dimensions
+  , uah.assessment_id
+  , a.assessment_mode_id
+  , a.assessment_type_id
+  , a.organizer_type_id AS assessment_organizer_id
+  , a.group_session_id AS assessment_group_session_id
+  , a.group_study_circle_id AS assessment_group_study_circle_id
+  , a.subject_id AS assessment_subject_id
+  , a.topic_id AS assessment_topic_id
+  , ms.board_id AS assessment_board_id 
+
+    -- --institution dimensions
+  , uah.institution_id
+  , uah.study_circle_id
+  , msc.ref_parent_gsc_id AS perf_group_study_circle_id
+  
+    -- --student dimensions
+  , uah.student_id
+  , mscs.id AS study_circle_student_id
+
+    -- --question dimensions
+  , uah.question_id
+  , q.subject_id AS question_subject_id
+  , q.sub_subject_id AS question_sub_subject_id
+  , q.topic_1_id AS question_topic_id
+  , q.sub_topic_1_id AS question_sub_topic_id
+  , q.objective_id AS question_objective_id
+  , q.difficulty_level AS question_difficulty_level
+
+
+    -- -- handraise measures 
+  , uah.hand_raise_time AS handraise_time
+
+
+    -- --count measures
+  , 1 AS handraise_count
+
+    -- --audit fields
+  , uah.ts
+FROM ${ref('df_dedup_stg_raft_ah')}  uah
+LEFT JOIN readanalytics.assessment a ON uah.assessment_id = a.id
+LEFT JOIN readanalytics.master_subject ms ON a.subject_id = ms.id AND ms.institution_id = 0
+LEFT JOIN readanalytics.master_academic_period mip ON ms.board_id = mip.board_id AND uah.assessment_date BETWEEN mip.start_date AND mip.end_date
+LEFT JOIN readanalytics.master_study_circle msc ON uah.study_circle_id = msc.id
+LEFT JOIN readanalytics.master_study_circle_student mscs ON msc.id = mscs.study_circle_id AND uah.student_id = mscs.student_id AND mscs.academic_period = mip.academic_period_name
+LEFT JOIN readanalytics.qb_question q ON uah.question_id = q.id

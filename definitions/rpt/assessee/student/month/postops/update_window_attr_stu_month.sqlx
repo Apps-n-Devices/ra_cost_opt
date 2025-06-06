@@ -1,0 +1,118 @@
+config {
+  type: "operations",
+  dependencies: "rpt_sc_stu_rac_month"
+}
+SET @@query_label =
+  "step:update_window_attr_stu_month, " ||
+  "batch_id: ${dataform.projectConfig.vars.batch_id}";
+
+UPDATE readanalytics.rpt_sc_stu_rac_month rmon
+SET 
+  rmon.w_rank_stu_in_sc = rmon_rank.w_rank_stu_in_sc ,
+  rmon.w_rank_stu_in_gsc = rmon_rank.w_rank_stu_in_gsc ,
+  rmon.w_count_student_in_sc = rmon_rank.w_count_student_in_sc ,
+  rmon.w_count_student_in_gsc = rmon_rank.w_count_student_in_gsc,
+  rmon.w_sum_response_velocity_sc = rmon_rank.w_sum_response_velocity_sc,
+  rmon.w_sum_response_velocity_gsc = rmon_rank.w_sum_response_velocity_gsc,
+  rmon.w_sum_response_accuracy_score_gsc = rmon_rank.w_sum_response_accuracy_score_gsc,
+  rmon.w_sum_response_main_score_gsc = rmon_rank.w_sum_response_main_score_gsc,
+  rmon.w_sum_response_time_taken_gsc = rmon_rank.w_sum_response_time_taken_gsc,
+  rmon.w_count_present_responses_sc = rmon_rank.w_count_present_responses_sc,
+  rmon.w_count_present_responses_gsc = rmon_rank.w_count_present_responses_gsc,
+  rmon.w_count_answered_responses_gsc = rmon_rank.w_count_answered_responses_gsc
+FROM 
+(SELECT
+  dim_ra_cube_id,
+  student_name,
+  student_id,
+  study_circle_id,
+  assessment_month,
+      rank() OVER (
+            PARTITION BY 
+              assessment_month,
+              dim_ra_cube_id,
+              study_circle_id              
+            ORDER BY
+              sum_response_velocity / count_present_responses  desc
+          ) w_rank_stu_in_sc,
+      rank() OVER (
+            PARTITION BY 
+              study_circle_ref_parent_gsc_id,
+              assessment_month,
+              dim_ra_cube_id            
+            ORDER BY
+              sum_response_velocity/count_present_responses  desc
+          ) w_rank_stu_in_gsc,
+      COUNT(*) OVER (
+            PARTITION BY 
+              assessment_month,
+              dim_ra_cube_id,
+              study_circle_id               
+          ) w_count_student_in_sc,
+      COUNT(*) OVER (
+            PARTITION BY 
+              study_circle_ref_parent_gsc_id,
+              assessment_month,
+              dim_ra_cube_id
+          ) w_count_student_in_gsc,
+      SUM(sum_response_velocity) OVER (
+            PARTITION BY 
+              assessment_month,
+              dim_ra_cube_id,
+              study_circle_id
+          ) w_sum_response_velocity_sc,
+      SUM(sum_response_velocity) OVER (
+            PARTITION BY 
+              study_circle_ref_parent_gsc_id,
+              assessment_month,
+              dim_ra_cube_id
+          ) w_sum_response_velocity_gsc,
+      SUM(sum_response_accuracy_score) OVER (
+            PARTITION BY 
+              study_circle_ref_parent_gsc_id,
+              assessment_month,
+              dim_ra_cube_id
+          ) w_sum_response_accuracy_score_gsc ,
+      SUM(sum_response_main_score) OVER (
+            PARTITION BY 
+              study_circle_ref_parent_gsc_id,
+              assessment_month,
+              dim_ra_cube_id
+          ) w_sum_response_main_score_gsc ,
+      SUM(sum_response_time_taken) OVER (
+            PARTITION BY 
+              study_circle_ref_parent_gsc_id,
+              assessment_month,
+              dim_ra_cube_id
+          ) w_sum_response_time_taken_gsc,    
+      SUM(count_present_responses) OVER (
+            PARTITION BY 
+              assessment_month,
+              dim_ra_cube_id,
+              study_circle_id
+          ) w_count_present_responses_sc,
+      SUM(count_present_responses) OVER (
+            PARTITION BY 
+              study_circle_ref_parent_gsc_id,
+              assessment_month,
+              dim_ra_cube_id
+          ) w_count_present_responses_gsc,
+      SUM(count_answered_responses) OVER (
+            PARTITION BY 
+              study_circle_ref_parent_gsc_id,
+              assessment_month,
+              dim_ra_cube_id
+          ) w_count_answered_responses_gsc
+FROM `readanalytics.rpt_sc_stu_rac_month` rmon
+WHERE count_present_responses > 0
+    AND rmon.assessment_month>= DATE_TRUNC(DATE('${dataform.projectConfig.vars.batch_min_assessment_date}'),MONTH)
+    AND rmon.assessment_month<= DATE_TRUNC(DATE('${dataform.projectConfig.vars.batch_max_assessment_date}'),MONTH)
+) rmon_rank
+
+WHERE
+    rmon.dim_ra_cube_id = rmon_rank.dim_ra_cube_id
+    AND rmon.student_id = rmon_rank.student_id
+    AND rmon.study_circle_id = rmon_rank.study_circle_id
+    AND rmon.assessment_month = rmon_rank.assessment_month
+    AND rmon.assessment_month>= DATE_TRUNC(DATE('${dataform.projectConfig.vars.batch_min_assessment_date}'),MONTH)
+    AND rmon.assessment_month<= DATE_TRUNC(DATE('${dataform.projectConfig.vars.batch_max_assessment_date}'),MONTH)

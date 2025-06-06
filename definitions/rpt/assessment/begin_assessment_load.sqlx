@@ -1,0 +1,8 @@
+config {
+  type: "operations",
+  dependencies: "begin_rpt_load"
+}
+SET @@query_label =
+  "step:begin_assessment_load, " ||
+  "batch_id: ${dataform.projectConfig.vars.batch_id}";
+SELECT 1 AS VALUE

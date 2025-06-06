@@ -1,0 +1,8 @@
+config {
+  type: "operations",
+  dependencies: "df_sc_stu_rac_day"
+}
+SET @@query_label =
+  "step:begin_study_circle_load, " ||
+  "batch_id: ${dataform.projectConfig.vars.batch_id}";
+SELECT 1 AS VALUE

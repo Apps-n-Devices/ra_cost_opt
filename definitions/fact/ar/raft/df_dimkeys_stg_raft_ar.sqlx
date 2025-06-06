@@ -1,0 +1,104 @@
+config {
+  type: "table",
+  assertions: {
+    nonNull: ["stg_id", "batch_id", "assessment_date","assessment_month","assessment_year"
+    , "assessment_academic_period_id","assessment_id","assessment_mode_id","assessment_type_id"
+    , "assessment_organizer_id","assessment_group_session_id","assessment_group_study_circle_id"
+    , "assessment_subject_id","assessment_topic_id","assessment_board_id","institution_id"
+    , "study_circle_id","perf_group_study_circle_id","student_id"
+    , "question_id","question_subject_id","question_sub_subject_id","question_topic_id"
+    , "question_sub_topic_id","question_objective_id","question_difficulty_level","score_scheme_id"
+    , "perf_response","perf_result","perf_count","perf_correct_count","perf_incorrect_count"
+    , "perf_near_correct_count","perf_not_answered_count","perf_absent_count","perf_present_count"
+    , "ts"]
+  }
+}
+pre_operations {
+    SET @@query_label =
+      "step:df_dimkeys_stg_raft_ar, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+SELECT  
+    -- --meta dimensions
+    uap.stg_id as stg_id
+    , CAST(('${dataform.projectConfig.vars.batch_id}') AS INT64) as batch_id
+
+    -- --date dimensions
+    , uap.assessment_date
+    , DATE_TRUNC(uap.assessment_date, MONTH) AS assessment_month
+    , DATE_TRUNC(uap.assessment_date, YEAR) AS assessment_year
+    , mip.id AS assessment_academic_period_id
+
+    -- --assessment dimensions
+    , uap.assessment_id
+    , a.assessment_mode_id
+    , a.assessment_type_id
+    , a.organizer_type_id AS assessment_organizer_id
+    , a.group_session_id AS assessment_group_session_id
+    , a.group_study_circle_id AS assessment_group_study_circle_id
+    , a.subject_id AS assessment_subject_id
+    , a.topic_id AS assessment_topic_id
+    , ms.board_id AS assessment_board_id 
+
+    -- --institution dimensions
+    , uap.institution_id
+    , uap.study_circle_id
+    , msc.ref_parent_gsc_id AS perf_group_study_circle_id
+  
+    -- --student dimensions
+    , uap.student_id
+    , mscs.id AS study_circle_student_id
+
+    -- --question dimensions
+    , uap.question_id
+    , q.subject_id AS question_subject_id
+    , q.sub_subject_id AS question_sub_subject_id
+    , q.topic_1_id AS question_topic_id
+    , q.sub_topic_1_id AS question_sub_topic_id
+    , q.objective_id AS question_objective_id
+    , q.difficulty_level AS question_difficulty_level
+   
+    -- -- score scheme dimension
+    , sco.id AS score_scheme_id
+
+    -- --response dimensions
+    , uap.response AS perf_response
+    , uap.result AS perf_result
+
+    -- --performance measures
+    ,  CASE 
+       WHEN uap.result = 'absent' OR uap.result = 'not_answered' THEN NULL
+       ELSE uap.time_taken
+       END AS perf_time_taken
+    , readanalytics.calculate_assessment_score(uap.result,sco.correct_score ,sco.near_correct_score, 
+      sco.incorrect_score , sco.not_answered_score) AS perf_score 
+    , readanalytics.calculate_assessment_accuracy(uap.result) AS perf_accuracy 
+    , readanalytics.calculate_assessment_speed(uap.result,uap.time_taken,q.time_required) AS perf_speed
+    , readanalytics.calculate_assessment_difficulty(uap.result , q.difficulty_level) AS perf_difficulty
+    , readanalytics.calculate_assessment_velocity(readanalytics.calculate_assessment_score(uap.result, 
+        sco.correct_score ,sco.near_correct_score, sco.incorrect_score , sco.not_answered_score) , 
+        sco. score_weight,readanalytics.calculate_assessment_accuracy(uap.result),
+        sco.accuracy_weight,readanalytics.calculate_assessment_speed(uap.result,uap.time_taken,
+        q.time_required),sco.speed_weight ,readanalytics.calculate_assessment_difficulty(uap.result , 
+        q.difficulty_level),sco.difficulty_weight , 1.0 ) AS perf_velocity
+
+
+    --count measures
+      , 1 AS perf_count
+      , CASE WHEN uap.result = 'correct' THEN 1 ELSE 0 END AS perf_correct_count 
+      , CASE WHEN uap.result = 'incorrect' THEN 1 ELSE 0 END AS perf_incorrect_count
+      , CASE WHEN uap.result = 'near_correct' THEN 1 ELSE 0 END AS perf_near_correct_count
+      , CASE WHEN uap.result = 'not_answered' THEN 1 ELSE 0 END AS perf_not_answered_count
+      , CASE WHEN uap.result = 'absent' THEN 1 ELSE 0 END AS perf_absent_count
+      , CASE WHEN uap.result <> 'absent' THEN 1 ELSE 0 END AS perf_present_count
+
+    -- --audit fields
+    , uap.ts
+FROM ${ref('df_dedup_stg_raft_ar')}  uap
+LEFT JOIN readanalytics.assessment a ON uap.assessment_id = a.id
+LEFT JOIN readanalytics.master_subject ms ON a.subject_id = ms.id AND ms.institution_id = 0
+LEFT JOIN readanalytics.master_academic_period mip ON ms.board_id = mip.board_id AND uap.assessment_date BETWEEN mip.start_date AND mip.end_date
+LEFT JOIN readanalytics.master_study_circle msc ON uap.study_circle_id = msc.id
+LEFT JOIN readanalytics.master_study_circle_student mscs ON msc.id = mscs.study_circle_id AND uap.student_id = mscs.student_id AND mip.academic_period_name = mscs.academic_period
+LEFT JOIN readanalytics.qb_question q ON uap.question_id = q.id
+LEFT JOIN readanalytics.master_score_scheme sco ON sco.group_institution_id=a.group_institution_id 

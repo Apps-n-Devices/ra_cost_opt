@@ -1,0 +1,38 @@
+config {
+  type: "operations",
+  dependencies: ["update_window_attr_derived_sc_month"]
+}
+SET @@query_label =
+  "step:update_window_measures_history_sc_month, " ||
+  "batch_id: ${dataform.projectConfig.vars.batch_id}";
+
+UPDATE readanalytics.rpt_sc_rac_month rmon
+SET rmon.window_measures_history = rmon_percentile_hist.window_measures_history
+FROM (
+SELECT  
+	  rmon.study_circle_id 
+	, rmon.dim_ra_cube_id 
+	, rmon.assessment_month
+  ,ARRAY_AGG(STRUCT(
+    assessment_month
+  , w_rank_sc_in_gsc
+  , w_count_sc_in_gsc
+  , (1 - w_rank_sc_in_gsc / w_count_sc_in_gsc)*100 as percentile_gsc
+  )  
+	)  OVER (
+		PARTITION BY 		
+			  rmon.study_circle_id 
+			, rmon.dim_ra_cube_id 
+		ORDER BY rmon.assessment_month DESC
+		RANGE BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING
+	) AS window_measures_history
+FROM readanalytics.rpt_sc_rac_month rmon
+WHERE rmon.assessment_month>= DATE_TRUNC(DATE('${dataform.projectConfig.vars.batch_min_assessment_date}'),MONTH)
+  AND rmon.assessment_month<= DATE_TRUNC(DATE('${dataform.projectConfig.vars.batch_max_assessment_date}'),MONTH)
+) rmon_percentile_hist
+WHERE 
+    rmon.dim_ra_cube_id = rmon_percentile_hist.dim_ra_cube_id
+    AND rmon.study_circle_id = rmon_percentile_hist.study_circle_id
+    AND rmon.assessment_month = rmon_percentile_hist.assessment_month
+    AND rmon.assessment_month>= DATE_TRUNC(DATE('${dataform.projectConfig.vars.batch_min_assessment_date}'),MONTH)
+    AND rmon.assessment_month<= DATE_TRUNC(DATE('${dataform.projectConfig.vars.batch_max_assessment_date}'),MONTH)

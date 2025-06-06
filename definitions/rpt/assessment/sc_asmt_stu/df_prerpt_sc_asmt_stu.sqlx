@@ -1,0 +1,67 @@
+config {
+  type: "table"
+}
+pre_operations {
+    SET @@query_label =
+      "step:df_prerpt_sc_asmt_stu, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+
+SELECT  
+    -- primary keys
+      dfsats.assessment_id
+    , dfsats.study_circle_id
+    , dfsats.student_id
+
+    -- count measures 
+    , CAST(readanalytics.safe_add(dfsats.count_hand_raises ,rsats.count_hand_raises) AS INT64) AS count_hand_raises
+    , readanalytics.safe_add(dfsats.sum_response_velocity,rsats.sum_response_velocity) AS sum_response_velocity
+    , CAST(readanalytics.safe_add(dfsats.count_present_responses ,rsats.count_present_responses) AS INT64) AS count_present_responses
+
+    -- array fields
+    , ARRAY (
+      SELECT AS STRUCT 
+      q_id,
+      q_sequence,
+      result
+      FROM
+      (
+        SELECT AS STRUCT * FROM UNNEST(dfsats.question_wise_results) as s
+        UNION ALL
+        SELECT AS STRUCT * FROM UNNEST(rsats.question_wise_results) as r
+      ) question_wise_results
+      GROUP BY 
+      q_id,
+      q_sequence,
+      result
+    ) AS question_wise_results
+    
+    -- array assessment
+    , ARRAY (
+      SELECT AS STRUCT 
+      assessment_id
+      FROM
+      (
+        SELECT AS STRUCT * FROM UNNEST(dfsats.arr_assessments) as s
+        UNION ALL
+        SELECT AS STRUCT * FROM UNNEST(rsats.arr_assessments) as r
+      ) arr_assessments
+      GROUP BY assessment_id
+    ) AS arr_assessments
+
+    -- topic measures
+    , rsats.count_present_responses_topic
+    , rsats.sum_response_velocity_topic
+
+    -- average topic measure
+    , rsats.avg_response_velocity_topic
+
+    -- audit fields
+    , dfsats.ts
+
+FROM ${ref("df_sc_asmt_stu")} dfsats
+LEFT JOIN
+  readanalytics.rpt_sc_asmt_stu rsats
+  ON dfsats.assessment_id = rsats.assessment_id
+  AND dfsats.study_circle_id = rsats.study_circle_id
+  AND dfsats.student_id = rsats.student_id

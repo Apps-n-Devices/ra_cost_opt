@@ -1,0 +1,18 @@
+config {
+  type: "table",
+  dependencies: ["df_prerpt_sc_rac_day_measures"]
+}
+pre_operations {
+    SET @@query_label =
+      "step:df_prerpt_sc_rac_day_countdistinct_total_questions, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+SELECT   
+  -- --primary keys
+      study_circle_id
+    , dim_ra_cube_id
+    , assessment_date
+    , (
+      SELECT COUNT(1) FROM UNNEST(arr_assessment_questions)
+    ) AS countdistinct_total_questions
+FROM readanalytics.df_prerpt_sc_rac_day_measures

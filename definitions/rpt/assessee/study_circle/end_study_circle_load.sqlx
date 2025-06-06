@@ -1,0 +1,12 @@
+config {
+    type: "operations",
+    dependencies: [
+        "update_trend_w_percentile_sc_in_gsc_day",
+        "update_trend_w_percentile_sc_in_gsc_month",
+        "update_trend_w_percentile_sc_in_gsc_period",
+    ]
+}
+SET @@query_label =
+  "step:end_study_circle_load, " ||
+  "batch_id: ${dataform.projectConfig.vars.batch_id}";
+SELECT 1 AS VALUE

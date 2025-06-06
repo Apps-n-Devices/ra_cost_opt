@@ -1,0 +1,35 @@
+config {
+  type: "operations",
+  dependencies: ["update_window_attr_sc_month"]
+}
+SET @@query_label =
+  "step:update_window_attr_derived_sc_month, " ||
+  "batch_id: ${dataform.projectConfig.vars.batch_id}";
+
+UPDATE readanalytics.rpt_sc_rac_month rmon
+SET
+rmon.w_avg_response_velocity_gsc = rmonattrd.w_avg_response_velocity_gsc,
+rmon.w_avg_response_accuracy_score_gsc = rmonattrd.w_avg_response_accuracy_score_gsc,
+rmon.w_avg_response_main_score_gsc = rmonattrd.w_avg_response_main_score_gsc,
+rmon.w_avg_response_time_taken_gsc = rmonattrd.w_avg_response_time_taken_gsc,
+rmon.w_percentile_sc_gsc = rmonattrd.w_percentile_sc_gsc
+FROM(
+SELECT 
+    rmon.study_circle_id 
+  , rmon.dim_ra_cube_id 
+  , rmon.assessment_month 
+  , readanalytics.safe_avg( w_sum_response_velocity_gsc, w_count_present_responses_gsc) AS w_avg_response_velocity_gsc
+  , readanalytics.safe_avg( w_sum_response_accuracy_score_gsc, w_count_present_responses_gsc) AS w_avg_response_accuracy_score_gsc
+  , readanalytics.safe_avg( w_sum_response_main_score_gsc, w_count_present_responses_gsc) AS w_avg_response_main_score_gsc
+  , readanalytics.safe_avg( w_sum_response_time_taken_gsc, w_count_answered_responses_gsc) AS w_avg_response_time_taken_gsc
+  , ((1 - rmon.w_rank_sc_in_gsc / rmon.w_count_sc_in_gsc) * 100) AS w_percentile_sc_gsc
+FROM `readanalytics.rpt_sc_rac_month` rmon
+WHERE rmon.assessment_month>= DATE_TRUNC(DATE('${dataform.projectConfig.vars.batch_min_assessment_date}'),MONTH)
+  AND rmon.assessment_month<= DATE_TRUNC(DATE('${dataform.projectConfig.vars.batch_max_assessment_date}'),MONTH)
+) AS rmonattrd 
+WHERE 
+    rmon.dim_ra_cube_id = rmonattrd.dim_ra_cube_id
+    AND rmon.study_circle_id = rmonattrd.study_circle_id
+    AND rmon.assessment_month = rmonattrd.assessment_month
+    AND rmon.assessment_month>= DATE_TRUNC(DATE('${dataform.projectConfig.vars.batch_min_assessment_date}'),MONTH)
+    AND rmon.assessment_month<= DATE_TRUNC(DATE('${dataform.projectConfig.vars.batch_max_assessment_date}'),MONTH)

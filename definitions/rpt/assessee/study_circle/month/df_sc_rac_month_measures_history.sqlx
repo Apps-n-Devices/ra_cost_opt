@@ -1,0 +1,30 @@
+config {
+  type: "table",
+  dependencies: "df_sc_rac_month"
+}
+pre_operations {
+    SET @@query_label =
+      "step:df_sc_month_measures_history, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+SELECT 
+	  rmon.study_circle_id 
+	, rmon.dim_ra_cube_id 
+	, rmon.assessment_month 
+    , ARRAY_AGG(
+        STRUCT(
+      assessment_month
+    , sum_response_velocity
+    , sum_response_accuracy_score
+    , sum_response_main_score
+    , sum_response_time_taken
+    , count_present_responses
+        )  
+	)  OVER (
+		PARTITION BY 		
+			  rmon.study_circle_id 
+			, rmon.dim_ra_cube_id 
+		ORDER BY rmon.assessment_month DESC
+		RANGE BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING
+	) AS measures_history
+FROM readanalytics.df_sc_rac_month rmon

@@ -1,0 +1,81 @@
+config {
+  type: "operations",
+  dependencies: "rpt_sc_rac_period"
+}
+SET @@query_label =
+  "step:update_window_attr_sc_period, " ||
+  "batch_id: ${dataform.projectConfig.vars.batch_id}";
+  
+UPDATE `readanalytics.rpt_sc_rac_period` rper
+SET rper.w_rank_sc_in_gsc = rper_rank.w_rank_sc_in_gsc,
+rper.w_count_sc_in_gsc = rper_rank.w_count_sc_in_gsc,
+rper.w_sum_response_velocity_gsc = rper_rank.w_sum_response_velocity_gsc,
+rper.w_sum_response_accuracy_score_gsc = rper_rank.w_sum_response_accuracy_score_gsc,
+rper.w_sum_response_main_score_gsc = rper_rank.w_sum_response_main_score_gsc,
+rper.w_sum_response_time_taken_gsc = rper_rank.w_sum_response_time_taken_gsc,
+rper.w_count_present_responses_gsc = rper_rank.w_count_present_responses_gsc,
+rper.w_count_answered_responses_gsc = rper_rank.w_count_answered_responses_gsc
+FROM
+(SELECT
+  dim_ra_cube_id,
+  study_circle_id,
+  assessment_academic_period_id,
+      rank() OVER (
+            PARTITION BY 
+              study_circle_ref_parent_gsc_id,
+              assessment_academic_period_id,
+              dim_ra_cube_id          
+            ORDER BY
+              sum_response_velocity/count_present_responses desc
+          ) w_rank_sc_in_gsc,
+      COUNT(*) OVER (
+            PARTITION BY 
+              study_circle_ref_parent_gsc_id,
+              assessment_academic_period_id,
+              dim_ra_cube_id
+          ) w_count_sc_in_gsc,
+      SUM(sum_response_velocity) OVER (
+            PARTITION BY 
+              study_circle_ref_parent_gsc_id,
+              assessment_academic_period_id,
+              dim_ra_cube_id
+          ) w_sum_response_velocity_gsc ,
+      SUM(sum_response_accuracy_score) OVER (
+            PARTITION BY 
+              study_circle_ref_parent_gsc_id,
+              assessment_academic_period_id,
+              dim_ra_cube_id
+          ) w_sum_response_accuracy_score_gsc ,
+      SUM(sum_response_main_score) OVER (
+            PARTITION BY 
+              study_circle_ref_parent_gsc_id,
+              assessment_academic_period_id,
+              dim_ra_cube_id
+          ) w_sum_response_main_score_gsc,
+      SUM(sum_response_time_taken) OVER (
+            PARTITION BY 
+              study_circle_ref_parent_gsc_id,
+              assessment_academic_period_id,
+              dim_ra_cube_id
+          ) w_sum_response_time_taken_gsc,
+      SUM(count_present_responses) OVER (
+            PARTITION BY 
+              study_circle_ref_parent_gsc_id,
+              assessment_academic_period_id,
+              dim_ra_cube_id
+          ) w_count_present_responses_gsc,
+      SUM(count_answered_responses) OVER (
+            PARTITION BY 
+              study_circle_ref_parent_gsc_id,
+              assessment_academic_period_id,
+              dim_ra_cube_id
+          ) w_count_answered_responses_gsc     
+  FROM `readanalytics.rpt_sc_rac_period` rper
+  WHERE count_present_responses > 0
+  AND rper.assessment_academic_period_id IS NOT NULL 
+) rper_rank
+WHERE 
+    rper.dim_ra_cube_id = rper_rank.dim_ra_cube_id
+    AND rper.study_circle_id = rper_rank.study_circle_id
+    AND rper.assessment_academic_period_id = rper_rank.assessment_academic_period_id
+    AND rper.assessment_academic_period_id IS NOT NULL

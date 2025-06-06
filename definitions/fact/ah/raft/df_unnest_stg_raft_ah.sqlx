@@ -1,0 +1,36 @@
+config {
+  type: "table",
+  dependencies: 'begin_fact_load'
+}
+pre_operations {
+    SET @@query_label =
+      "step:df_unnest_stg_raft_ah, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+
+SELECT id as stg_id 
+  , CAST(JSON_EXTRACT_SCALAR(stg.raft_assessment_handraise_json, '$.value.assessment_id') AS STRING) AS assessment_id
+  , CAST(SUBSTR(JSON_EXTRACT_SCALAR(stg.raft_assessment_handraise_json, '$.value.assessment_date'), 1, 10) AS DATE) AS assessment_date
+  , CAST(JSON_EXTRACT_SCALAR(stg.raft_assessment_handraise_json, '$.value.institution_id') AS INT64) AS institution_id
+  , CAST(JSON_EXTRACT_SCALAR(stg.raft_assessment_handraise_json, '$.value.study_circle_id') AS INT64) AS study_circle_id
+  , CAST(JSON_EXTRACT_SCALAR(handraise, '$.student_id') AS INT64) AS student_id
+  , CAST(JSON_EXTRACT_SCALAR(handraise, '$.question_id') AS INT64) AS question_id
+  , CAST(JSON_EXTRACT_SCALAR(handraise, '$.hand_raise_time') AS INT64) AS hand_raise_time
+  , ts
+FROM ${ref('stg_raft_ah')} AS stg
+    , UNNEST(JSON_EXTRACT_ARRAY(stg.raft_assessment_handraise_json, '$.value.hand_raise')) AS handraise 
+WHERE stg.ts > '${dataform.projectConfig.vars.batch_start_ts}' AND stg.ts <= '${dataform.projectConfig.vars.batch_end_ts}'
+UNION ALL
+SELECT  
+    stg_id,
+    assessment_id,
+    assessment_date,
+    institution_id,
+    study_circle_id,
+    student_id,
+    question_id,
+    hand_raise_time,
+    ts
+FROM readanalytics.migrated_raft_ah 
+WHERE ts > '${dataform.projectConfig.vars.batch_start_ts}' AND ts <= '${dataform.projectConfig.vars.batch_end_ts}'
+AND is_excluded = false

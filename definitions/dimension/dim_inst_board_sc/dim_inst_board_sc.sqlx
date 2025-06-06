@@ -1,0 +1,27 @@
+config {
+  type: "table",
+  dependencies: ["begin_dimension_load"]
+}
+pre_operations {
+    SET @@query_label =
+      "step:dim_inst_board_sc, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+SELECT 
+    scc.institution_id 
+  , c.board_id AS board_id
+  , scc.study_circle_id
+  , sc.name AS sc_name
+  , ap.id AS academic_period_id
+FROM readanalytics.master_study_circle_student scc
+JOIN readanalytics.master_study_circle sc ON scc.study_circle_id = sc.id AND sc.is_active = true
+JOIN readanalytics.master_academic_period ap ON ap.academic_period_name = scc.academic_period
+JOIN readanalytics.master_course c ON c.id = sc.ref_course_id
+WHERE scc.is_active = TRUE
+GROUP BY 
+  institution_id,
+  board_id,
+  study_circle_id,
+  sc_name,
+  academic_period_id
+

@@ -1,0 +1,66 @@
+
+config {
+  type: "incremental",
+  protected: true,
+  uniqueKey: ["assessment_id", "student_id", "question_id","handraise_time"],
+  dependencies: ["readanalytics_df_dimkeys_stg_raft_ah_assertions_rowConditions"
+                , "chk_df_dimkeys_stg_raft_ah__rowcount"]
+
+}
+pre_operations {
+    SET @@query_label =
+      "step:fact_ah, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+
+-- merge records from inter_dinkeys_stg_raft_ah table
+SELECT  
+    -- --meta dimensions
+    stg_id
+    , batch_id
+
+    -- --date dimensions
+    , assessment_date
+    , assessment_month
+    , assessment_year
+    , assessment_academic_period_id
+
+    -- --assessment dimensions
+    , assessment_id
+    , assessment_mode_id
+    , assessment_type_id
+    , assessment_organizer_id
+    , assessment_group_session_id
+    , assessment_group_study_circle_id
+    , assessment_subject_id
+    , assessment_topic_id
+    , assessment_board_id 
+
+    -- --institution dimensions
+    , institution_id
+    , study_circle_id
+    , perf_group_study_circle_id
+  
+    -- --student dimensions
+    , student_id
+    , study_circle_student_id
+
+    -- --question dimensions
+    , question_id
+    , question_subject_id
+    , question_sub_subject_id
+    , question_topic_id
+    , question_sub_topic_id
+    , question_objective_id
+    , question_difficulty_level
+
+    -- -- handraise measures 
+    , handraise_time
+
+
+    -- --count measures
+    , handraise_count
+
+    -- --audit fields
+    , ts
+FROM readanalytics.df_dimkeys_stg_raft_ah

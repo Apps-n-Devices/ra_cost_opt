@@ -1,0 +1,40 @@
+config {
+  type: "table",
+  uniqueKey: ["id"],
+  dependencies: ["begin_dimension_load"]
+}
+pre_operations {
+    SET @@query_label =
+      "step:df_dim_ra_cube, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+
+SELECT
+  TO_HEX(MD5(
+    CONCAT(COALESCE(CAST(assessment_mode_id AS STRING), 'null'), '-',
+            COALESCE(CAST(assessment_type_id AS STRING), 'null'), '-',
+            COALESCE(CAST(assessment_organizer_id AS STRING), 'null'), '-',
+            COALESCE(CAST(question_subject_id AS STRING), 'null'), '-',
+            COALESCE(CAST(question_sub_subject_id AS STRING), 'null'), '-',
+            COALESCE(CAST(question_topic_id AS STRING), 'null'), '-',
+            COALESCE(CAST(question_sub_topic_id AS STRING), 'null'), '-',
+            COALESCE(CAST(question_objective_id AS STRING), 'null')
+  ))) AS id,
+  assessment_mode_id,
+  assessment_type_id,
+  assessment_organizer_id,
+  question_subject_id,
+  question_sub_subject_id,
+  question_topic_id,
+  question_sub_topic_id,
+  question_objective_id
+FROM readanalytics.fact_ar
+WHERE ts > '${dataform.projectConfig.vars.batch_start_ts}' AND ts <= '${dataform.projectConfig.vars.batch_end_ts}'
+GROUP BY CUBE( assessment_mode_id,
+  assessment_type_id, 
+  assessment_organizer_id, 
+  question_subject_id, 
+  question_sub_subject_id, 
+  question_topic_id,
+  question_sub_topic_id,
+  question_objective_id)

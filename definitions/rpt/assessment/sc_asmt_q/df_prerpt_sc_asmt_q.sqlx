@@ -1,0 +1,36 @@
+config {
+  type: "table"
+}
+pre_operations {
+    SET @@query_label =
+      "step:df_prerpt_sc_asmt_q, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+
+SELECT  
+    -- primary keys
+      dfsatq.assessment_id
+    , dfsatq.study_circle_id
+    , dfsatq.question_id
+
+    -- count measures
+    , dfsatq.count_correct_responses + COALESCE(rsatq.count_correct_responses,0) AS count_correct_responses
+    , dfsatq.count_incorrect_responses + COALESCE(rsatq.count_incorrect_responses,0) AS count_incorrect_responses
+    , dfsatq.count_near_correct_responses + COALESCE(rsatq.count_near_correct_responses,0)  AS count_near_correct_responses
+    , dfsatq.count_not_answered_responses + COALESCE(rsatq.count_not_answered_responses,0) AS count_not_answered_responses
+
+    -- count measures gsc
+    , rsatq.count_correct_responses_gsc 
+    , rsatq.count_near_correct_responses_gsc 
+    , rsatq.count_incorrect_responses_gsc 
+    , rsatq.count_not_answered_responses_gsc 
+
+    -- audit fields
+    , dfsatq.ts
+
+FROM ${ref("df_sc_asmt_q")} dfsatq
+LEFT JOIN
+  readanalytics.rpt_sc_asmt_q rsatq
+  ON dfsatq.study_circle_id = rsatq.study_circle_id
+  AND dfsatq.assessment_id = rsatq.assessment_id
+  AND dfsatq.question_id = rsatq.question_id

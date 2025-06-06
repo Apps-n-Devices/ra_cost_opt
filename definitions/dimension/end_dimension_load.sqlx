@@ -1,0 +1,10 @@
+config {
+    type: "operations",
+    dependencies: ["dim_asmt_q", "dim_inst_board_sc", "dim_ra_cube" ]
+
+}
+SET @@query_label =
+  "step:end_dimension_load, " ||
+  "batch_id: ${dataform.projectConfig.vars.batch_id}";
+
+SELECT 1 AS VALUE

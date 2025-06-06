@@ -1,0 +1,23 @@
+config {
+    type: "assertion",
+    dependencies: [
+        "df_dimkeys_stg_raft_ah"
+    ]
+}
+
+SELECT
+  *
+FROM (
+  SELECT
+    (
+    SELECT
+      COUNT(*)
+    FROM
+      readanalytics.df_dimkeys_stg_raft_ah) AS dimkeys_count,
+    (
+    SELECT
+      COUNT(*)
+    FROM
+      readanalytics.df_dedup_stg_raft_ah) AS dedup_count )
+WHERE
+  dimkeys_count != dedup_count

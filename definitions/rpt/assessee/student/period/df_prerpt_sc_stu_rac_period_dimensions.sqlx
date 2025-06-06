@@ -1,0 +1,47 @@
+config {
+  type: "table",
+  dependencies: ["df_prerpt_sc_stu_rac_period_measures"]
+}
+pre_operations {
+    SET @@query_label =
+      "step:df_prerpt_sc_stu_rac_period_dimensions, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+SELECT 
+    -- --primary keys
+      stppre.study_circle_id 
+    , stppre.student_id 
+    , stppre.dim_ra_cube_id 
+    , stppre.assessment_academic_period_id 
+
+    -- -- --analytical dimensions
+    , drc.assessment_mode_id 
+    , drc.assessment_type_id
+    , drc.assessment_organizer_id 
+    , drc.question_subject_id 
+    , drc.question_sub_subject_id
+    , drc.question_topic_id
+    , drc.question_sub_topic_id 
+    , drc.question_objective_id 
+
+    -- -- --student dimensions
+    , mscs.id AS study_circle_student_id
+    , mscs.roll_number AS student_roll_number
+    , mst.name AS student_name
+    , mst.profile_pic_url AS student_profile_pic_url
+
+    -- -- --study_circle dimensions
+    , msc.institution_id 
+    , msc.ref_parent_gsc_id AS study_circle_ref_parent_gsc_id
+    , msc.name AS study_circle_name
+
+    -- -- --question dimensions
+    , msu.display_name AS question_subject_name
+    
+FROM readanalytics.df_prerpt_sc_stu_rac_period_measures stppre
+LEFT JOIN readanalytics.dim_ra_cube drc ON stppre.dim_ra_cube_id = drc.id
+LEFT JOIN readanalytics.master_subject msu ON drc.question_subject_id = msu.id
+LEFT JOIN readanalytics.master_study_circle msc ON stppre.study_circle_id = msc.id
+LEFT JOIN `readanalytics.master_academic_period` map ON stppre.assessment_academic_period_id = map.id
+LEFT JOIN readanalytics.master_study_circle_student mscs ON stppre.study_circle_id = mscs.study_circle_id AND stppre.student_id = mscs.student_id AND map.academic_period_name = mscs.academic_period
+LEFT JOIN readanalytics.master_student mst ON stppre.student_id=mst.id

@@ -1,0 +1,22 @@
+config {
+  type: "incremental",
+  protected: false,
+  uniqueKey: ["id"]
+}
+pre_operations {
+    SET @@query_label =
+      "step:dim_ra_cube, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+
+SELECT 
+  id,
+  assessment_mode_id,
+  assessment_type_id,
+  assessment_organizer_id,
+  question_subject_id,
+  question_sub_subject_id,
+  question_topic_id,
+  question_sub_topic_id,
+  question_objective_id
+FROM ${ref("df_dim_ra_cube")}

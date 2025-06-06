@@ -1,0 +1,46 @@
+config {
+  type: "operations",
+  dependencies: ["update_window_measures_history_sc_month"]
+}
+SET @@query_label =
+  "step:update_trend_w_percentile_sc_in_gsc_month, " ||
+  "batch_id: ${dataform.projectConfig.vars.batch_id}";
+
+UPDATE readanalytics.rpt_sc_rac_month rmon
+SET rmon.trend_w_percentile_sc_in_gsc = trend.trend_w_percentile_sc_in_gsc
+FROM(
+SELECT 
+    rmon.assessment_month
+    , rmon.study_circle_id
+    , rmon.dim_ra_cube_id
+    , (
+      SELECT 
+        CASE 
+          WHEN 
+            max(latest) IS NULL 
+            OR max(second_latest) IS NULL 
+          THEN 'INDETERMINATE'
+          WHEN 
+            (max(latest)) > 1.1 * (max(second_latest)) 
+          THEN 'IMPROVING'
+          WHEN (max(latest)) < 0.9 * (max(second_latest)) 
+          THEN 'DECLINING'
+          ELSE 'STABLE'
+        END AS trend
+      FROM (
+        SELECT
+          CASE WHEN rnum = 0 THEN hist.percentile_gsc END AS latest 
+          , CASE WHEN rnum = 1 THEN hist.percentile_gsc END AS second_latest 
+        FROM UNNEST(rmon.window_measures_history) AS hist
+        WITH OFFSET as rnum
+      )
+    ) as trend_w_percentile_sc_in_gsc
+FROM readanalytics.rpt_sc_rac_month rmon
+WHERE rmon.assessment_month>= DATE_TRUNC(DATE('${dataform.projectConfig.vars.batch_min_assessment_date}'),MONTH)
+  AND rmon.assessment_month<= DATE_TRUNC(DATE('${dataform.projectConfig.vars.batch_max_assessment_date}'),MONTH)
+) AS trend
+WHERE rmon.assessment_month = trend.assessment_month
+	AND rmon.study_circle_id = trend.study_circle_id
+	AND rmon.dim_ra_cube_id = trend.dim_ra_cube_id
+    AND rmon.assessment_month>= DATE_TRUNC(DATE('${dataform.projectConfig.vars.batch_min_assessment_date}'),MONTH)
+    AND rmon.assessment_month<= DATE_TRUNC(DATE('${dataform.projectConfig.vars.batch_max_assessment_date}'),MONTH)

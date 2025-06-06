@@ -1,0 +1,24 @@
+config {
+  type: "table",
+  dependencies: "df_prerpt_sc_rac_period_measures"
+}
+pre_operations {
+    SET @@query_label =
+      "step:df_prerpt_sc_rac_period_measures_derived, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+SELECT 
+  -- --primary keys
+    study_circle_id 
+  , dim_ra_cube_id 
+  , assessment_academic_period_id
+
+  -- --calculating the average
+	, readanalytics.safe_avg(sum_response_main_score,count_present_responses) AS avg_response_main_score
+	, readanalytics.safe_avg(sum_response_velocity,count_present_responses) AS avg_response_velocity
+	, readanalytics.safe_avg(sum_response_accuracy_score,count_present_responses) AS avg_response_accuracy_score
+  , readanalytics.safe_avg(sum_response_speed_score ,(count_present_responses - count_not_answered_responses)) AS avg_response_speed_score
+  
+  -- --answered responses
+  , count_present_responses - count_not_answered_responses AS count_answered_responses
+FROM readanalytics.df_prerpt_sc_rac_period_measures preper

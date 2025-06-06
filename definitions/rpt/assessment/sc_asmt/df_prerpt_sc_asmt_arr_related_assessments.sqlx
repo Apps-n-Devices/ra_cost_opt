@@ -1,0 +1,23 @@
+config {
+  type: "table",
+  dependencies: "df_prerpt_sc_asmt"
+}
+pre_operations {
+    SET @@query_label =
+      "step:df_prerpt_sc_asmt_arr_related_assessments, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+
+SELECT
+  -- --primary keys
+   assessment_id
+ , study_circle_id
+ , ARRAY(SELECT AS STRUCT
+     arr_related_assessments.assessment_id
+   , gs.code AS group_session_code
+    FROM(
+        SELECT AS STRUCT * FROM UNNEST(arr_related_assessments) 
+      )
+      AS arr_related_assessments
+   JOIN `readanalytics.stucle_group_session` gs ON arr_related_assessments.assessment_id = gs.assessment_id) AS arr_related_assessments
+FROM readanalytics.df_prerpt_sc_asmt

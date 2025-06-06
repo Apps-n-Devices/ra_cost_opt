@@ -1,0 +1,118 @@
+config {
+  type: "table",
+  dependencies: "df_sc_rac_month_measures_history"
+}
+pre_operations {
+    SET @@query_label =
+      "step:df_prerpt_sc_rac_month, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+SELECT 
+   -- --primary keys
+    scm.study_circle_id
+  , scm.dim_ra_cube_id
+  , scm.assessment_month
+
+   -- Performance measures
+    , CAST(readanalytics.safe_add(scm.sum_response_time_taken,rscm.sum_response_time_taken) AS INT64) AS sum_response_time_taken
+    , readanalytics.safe_add(scm.sum_response_main_score,rscm.sum_response_main_score) AS sum_response_main_score
+    , readanalytics.safe_add(scm.sum_response_accuracy_score,rscm.sum_response_accuracy_score) AS sum_response_accuracy_score
+    , readanalytics.safe_add(scm.sum_response_speed_score,rscm.sum_response_speed_score) AS sum_response_speed_score
+    , readanalytics.safe_add(scm.sum_response_difficulty_score,rscm.sum_response_difficulty_score) AS sum_response_difficulty_score
+    , readanalytics.safe_add(scm.sum_response_velocity,rscm.sum_response_velocity) AS sum_response_velocity
+    
+   -- -- Count measures
+    , CAST(readanalytics.safe_add(scm.count_total_responses,rscm.count_total_responses) AS INT64) AS count_total_responses
+    , CAST(readanalytics.safe_add(scm.count_correct_responses,rscm.count_correct_responses) AS INT64) AS count_correct_responses
+    , CAST(readanalytics.safe_add(scm.count_incorrect_responses,rscm.count_incorrect_responses) AS INT64) AS count_incorrect_responses
+    , CAST(readanalytics.safe_add(scm.count_near_correct_responses, rscm.count_near_correct_responses) AS INT64) AS count_near_correct_responses
+    , CAST(readanalytics.safe_add(scm.count_not_answered_responses,rscm.count_not_answered_responses) AS INT64) AS count_not_answered_responses
+    , CAST(readanalytics.safe_add(scm.count_absent_responses,rscm.count_absent_responses) AS INT64) AS count_absent_responses
+    , CAST(readanalytics.safe_add(scm.count_present_responses,rscm.count_present_responses) AS INT64) AS count_present_responses
+    , CAST(readanalytics.safe_add(scm.count_hand_raises,rscm.count_hand_raises) AS INT64) AS count_hand_raises
+
+    -- --measures history
+    , ARRAY (
+      SELECT AS STRUCT 
+        assessment_month
+      , SUM(sum_response_velocity) AS sum_response_velocity
+      , SUM(sum_response_accuracy_score) AS sum_response_accuracy_score
+      , SUM(sum_response_main_score) AS sum_response_main_score
+      , SUM(sum_response_time_taken) AS sum_response_time_taken
+      , SUM(count_present_responses) AS count_present_responses
+      FROM
+      (
+        SELECT AS STRUCT * FROM UNNEST(mh.measures_history) as s
+        UNION ALL
+        SELECT AS STRUCT * FROM UNNEST(rscm.measures_history) as r
+      )
+      GROUP BY assessment_month
+      ORDER BY assessment_month DESC
+   ) AS measures_history
+
+    -- --assessment and question history
+      , ARRAY (
+      SELECT AS STRUCT 
+      assessment_id
+      , question_id
+      , SUM(count_total_responses) AS count_total_responses
+      , SUM(count_correct_responses) AS count_correct_responses
+      , SUM(count_incorrect_responses) AS count_incorrect_responses
+      , SUM(count_near_correct_responses) AS count_near_correct_responses
+      , SUM(count_not_answered_responses) AS count_not_answered_responses
+      , SUM(count_absent_responses) AS count_absent_responses
+      FROM
+      (
+        SELECT AS STRUCT * FROM UNNEST(scm.arr_assessment_questions) as s
+        UNION ALL
+        SELECT AS STRUCT * FROM UNNEST(rscm.arr_assessment_questions) as r
+      )
+      GROUP BY assessment_id,question_id
+   ) AS arr_assessment_questions
+
+    -- --array assessment
+    , ARRAY (
+      SELECT AS STRUCT 
+      assessment_id
+      FROM
+      (
+        SELECT AS STRUCT * FROM UNNEST(scm.arr_assessments) as s
+        UNION ALL
+        SELECT AS STRUCT assessment_id FROM UNNEST(rscm.arr_assessments) as r
+      )
+      GROUP BY assessment_id
+    ) AS arr_assessments
+
+  -- Audit fields
+  , scm.ts 
+
+   --postops
+   , rscm.w_rank_sc_in_gsc
+   , rscm.w_count_sc_in_gsc
+   , rscm.w_sum_response_velocity_gsc
+   , rscm.w_sum_response_accuracy_score_gsc
+   , rscm.w_sum_response_main_score_gsc
+   , rscm.w_sum_response_time_taken_gsc
+   , rscm.w_count_present_responses_gsc
+   , rscm.w_count_answered_responses_gsc
+   , rscm.w_avg_response_velocity_gsc
+   , rscm.w_avg_response_accuracy_score_gsc
+   , rscm.w_avg_response_main_score_gsc
+   , rscm.w_avg_response_time_taken_gsc
+   , rscm.w_percentile_sc_gsc
+   , rscm.window_measures_history
+   , rscm.trend_w_percentile_sc_in_gsc
+FROM readanalytics.df_sc_rac_month scm
+LEFT JOIN
+  readanalytics. rpt_sc_rac_month rscm
+  ON 
+  scm.dim_ra_cube_id = rscm.dim_ra_cube_id
+  AND scm.study_circle_id = rscm.study_circle_id
+  AND scm.assessment_month = rscm.assessment_month
+  AND rscm.assessment_month>= DATE_TRUNC(DATE('${dataform.projectConfig.vars.batch_min_assessment_date}'),MONTH)
+  AND rscm.assessment_month<= DATE_TRUNC(DATE('${dataform.projectConfig.vars.batch_max_assessment_date}'),MONTH)
+LEFT JOIN
+    readanalytics.df_sc_rac_month_measures_history mh
+    ON scm.dim_ra_cube_id = mh.dim_ra_cube_id
+    AND scm.study_circle_id = mh.study_circle_id
+    AND scm.assessment_month = mh.assessment_month

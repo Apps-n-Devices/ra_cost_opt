@@ -28,7 +28,7 @@ SELECT
   question_topic_id,
   question_sub_topic_id,
   question_objective_id
-FROM readanalytics.fact_ar
+FROM dataform.fact_ar
 WHERE ts > '${dataform.projectConfig.vars.batch_start_ts}' AND ts <= '${dataform.projectConfig.vars.batch_end_ts}'
 GROUP BY CUBE( assessment_mode_id,
   assessment_type_id, 

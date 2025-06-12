@@ -1,0 +1,20 @@
+config {
+    type: "assertion",
+    dependencies: [
+        "df_dimkeys_stg_present_ar"    
+    ]
+}
+
+SELECT
+  *
+FROM (
+  SELECT (
+    SELECT COUNT(*)
+    FROM dataform.df_dimkeys_stg_present_ar
+  ) AS dimkeys_count,
+  (SELECT COUNT(*)
+    FROM dataform.df_dedup_stg_present_ar
+  ) AS dedup_count
+) 
+WHERE
+  dimkeys_count != dedup_count

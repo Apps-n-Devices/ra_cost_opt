@@ -3,15 +3,15 @@ config {
   type: "incremental",
   protected: true,
   uniqueKey: ["assessment_id", "student_id", "question_id"],
-  dependencies: ["readanalytics_df_dimkeys_stg_raft_ar_assertions_rowConditions"
-                ,"chk_df_dimkeys_stg_raft_ar__rowcount","chk_df_dimkeys_stg_raft_ar__valid_data", "df_vars_dimkeys_stg_raft_ar"]
+  dependencies: ["dataform_df_dimkeys_stg_present_ar_assertions_rowConditions"
+                ,"chk_df_dimkeys_stg_present_ar__rowcount","chk_df_dimkeys_stg_present_ar__valid_data"]
 }
 pre_operations {
     SET @@query_label =
       "step:fact_ar, " ||
       "batch_id: ${dataform.projectConfig.vars.batch_id}";
 }
--- merge records from inter_dimkeys_stg_raft_ap table
+-- merge records from inter_dimkeys_stg_present_ap table
 SELECT  
     -- --meta dimensions
     stg_id
@@ -69,12 +69,10 @@ SELECT
  
 
     --count measures
-    , perf_count AS count_total_responses
     , perf_correct_count AS count_correct_responses
     , perf_incorrect_count AS count_incorrect_responses
     , perf_near_correct_count AS count_near_correct_responses
     , perf_not_answered_count AS count_not_answered_responses
-    , perf_absent_count AS count_absent_responses
     , perf_present_count AS count_present_responses
 
     -- --audit fields
@@ -83,4 +81,4 @@ SELECT
    -- --handraise count
     , NULL as count_hand_raises
 
-FROM readanalytics.df_dimkeys_stg_raft_ar
+FROM dataform.df_dimkeys_stg_present_ar

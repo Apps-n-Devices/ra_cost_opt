@@ -1,9 +1,8 @@
-
 config {
   type: "incremental",
   protected: true,
   uniqueKey: ["assessment_id", "student_id", "question_id","handraise_time"],
-  dependencies: ["readanalytics_df_dimkeys_stg_raft_ah_assertions_rowConditions"
+  dependencies: ["dataform_df_dimkeys_stg_raft_ah_assertions_rowConditions"
                 , "chk_df_dimkeys_stg_raft_ah__rowcount"]
 
 }

@@ -1,6 +1,6 @@
 config {
     type: 'operations',
-    dependencies: ['end_fact_load']
+    dependencies: "end_fact_load"
 
 }
 SET @@query_label =

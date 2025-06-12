@@ -1,5 +1,0 @@
-config {
-    type: "declaration",
-    schema: "readanalytics",
-    name: "stg_raft_ar",
-}

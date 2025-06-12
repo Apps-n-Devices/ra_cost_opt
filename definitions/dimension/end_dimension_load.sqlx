@@ -1,7 +1,6 @@
 config {
     type: "operations",
-    dependencies: ["dim_asmt_q", "dim_inst_board_sc", "dim_ra_cube" ]
-
+    dependencies: ["dim_asmt_q", "dim_inst_board_sc", "dim_ra_cube","dim_gsc_course_board","dim_user_permissions"]
 }
 SET @@query_label =
   "step:end_dimension_load, " ||

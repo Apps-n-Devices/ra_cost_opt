@@ -1,0 +1,15 @@
+config {
+  type: "table",
+  dependencies: ["begin_dimension_load"]
+}
+pre_operations {
+    SET @@query_label =
+      "step:dim_gsc_course_board, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+
+SELECT  mgsc.id as group_study_circle_id, max( mc.id) AS course_id,MAX(mc.board_id) AS board_id
+FROM `readanalytics.master_group_study_circle` mgsc
+LEFT JOIN `readanalytics.master_study_circle` msc ON msc.ref_parent_gsc_id = mgsc.id AND msc.is_active = TRUE
+LEFT JOIN `readanalytics.master_course` mc ON mc.id = msc.ref_course_id
+GROUP BY group_study_circle_id

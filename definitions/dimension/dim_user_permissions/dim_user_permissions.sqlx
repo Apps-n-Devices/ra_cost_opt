@@ -1,0 +1,22 @@
+config {
+  type: "table",
+  dependencies: ["begin_dimension_load"]
+}
+pre_operations {
+    SET @@query_label =
+      "step:dim_user_permissions, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+
+SELECT 
+user_id
+, mc.board_id
+, TO_JSON_STRING(ARRAY_AGG(DISTINCT ref_parent_gsc_id)) AS gsc_list
+, TO_JSON_STRING(ARRAY_AGG(DISTINCT msc.id)) AS sc_list
+FROM readanalytics.master_user_permissions up
+LEFT JOIN  `readanalytics.master_group_institution_institution` mgii ON up.group_institution_id = mgii.group_institution_id
+LEFT JOIN `readanalytics.master_institution` mi ON mi.id = mgii.institution_id
+LEFT JOIN readanalytics.master_study_circle msc ON msc.institution_id = mgii.id
+LEFT JOIN `readanalytics.master_course` mc ON mc.id = msc.ref_course_id
+INNER JOIN `readanalytics.master_study_circle_student` mscs ON mscs.study_circle_id = msc.id
+GROUP BY user_id,board_id

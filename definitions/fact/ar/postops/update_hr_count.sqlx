@@ -5,7 +5,7 @@ config {
 SET @@query_label =
   "step:update_hr_count, " ||
   "batch_id: ${dataform.projectConfig.vars.batch_id}";
-UPDATE readanalytics.fact_ar fap
+UPDATE dataform.fact_ar fap
 SET fap.count_hand_raises = fah.handraise_count
 FROM (
 SELECT
@@ -13,9 +13,8 @@ SELECT
   , student_id
   , question_id
   ,SUM(handraise_count) AS handraise_count
-FROM `readanalytics.fact_ah` 
-WHERE assessment_date >=(SELECT tbl.min_assessment_date FROM `readanalytics.df_vars_dimkeys_stg_raft_ar` tbl)
-AND assessment_date<=(SELECT tbl.max_assessment_date FROM `readanalytics.df_vars_dimkeys_stg_raft_ar` tbl)
+FROM `dataform.fact_ah` 
+  WHERE assessment_date IN(${dataform.projectConfig.vars.assessment_date_list})
 GROUP BY
    assessment_id
   , student_id
@@ -25,5 +24,4 @@ GROUP BY
 WHERE fap.assessment_id = fah.assessment_id
 AND fap.student_id = fah.student_id
 AND fap.question_id = fah.question_id
-AND assessment_date >=(SELECT tbl.min_assessment_date FROM `readanalytics.df_vars_dimkeys_stg_raft_ar` tbl)
-AND assessment_date<=(SELECT tbl.max_assessment_date FROM `readanalytics.df_vars_dimkeys_stg_raft_ar` tbl) 
+AND assessment_date IN(${dataform.projectConfig.vars.assessment_date_list})

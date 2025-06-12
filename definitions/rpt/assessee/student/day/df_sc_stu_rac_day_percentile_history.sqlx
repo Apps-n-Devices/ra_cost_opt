@@ -1,0 +1,35 @@
+config {
+  type: "table",
+  dependencies: ["df_sc_stu_rac_day_percentile","df_sc_rac_day_rank"]
+}
+pre_operations {
+    SET @@query_label =
+      "step:df_sc_stu_rac_day_percentile_history, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+SELECT 
+  rday.student_id 
+	, rday.study_circle_id 
+	, rday.dim_ra_cube_id 
+	, rday.assessment_date 
+  , rday.percentile_gsc
+	, rank_stu_in_sc
+  ,ARRAY_AGG(STRUCT(
+    rday.assessment_date
+  , percentile_gsc
+	, rank_stu_in_sc
+  )  
+	)  OVER (
+		PARTITION BY 		
+			rday.student_id 
+			, rday.study_circle_id 
+			, rday.dim_ra_cube_id 
+		ORDER BY rday.assessment_date DESC
+		RANGE BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING
+	) AS percentile_gsc_history
+FROM readanalytics.df_sc_stu_rac_day_percentile rday
+LEFT JOIN readanalytics.df_sc_rac_day_rank rnk 
+ON rnk.study_circle_id = rday.study_circle_id
+AND rnk.assessment_date = rday.assessment_date
+AND rnk.dim_ra_cube_id = rday.dim_ra_cube_id
+LEFT JOIN  UNNEST(rnk.arr_stu_vel_rank) as s ON s.student_id = rday.student_id

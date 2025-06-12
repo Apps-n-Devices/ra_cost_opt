@@ -1,0 +1,127 @@
+config {
+  type: "incremental",
+  protected: true,
+  uniqueKey: ["dim_ra_cube_id","student_id","assessment_date","study_circle_id"],
+  dependencies: ["df_prerpt_sc_stu_rac_day_arr_difficulty_wise_results"
+                 ,"df_prerpt_sc_stu_rac_day_dimensions"
+                 ,"df_prerpt_sc_stu_rac_day_measures_derived"] ,
+  bigquery: {
+    updatePartitionFilter:
+        "assessment_date is not null"
+  }          
+}
+pre_operations {
+    SET @@query_label =
+      "step:rpt_sc_stu_rac_day, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+SELECT 
+    -- --primary keys
+      stdpre.study_circle_id 
+    , stdpre.student_id 
+    , stdpre.dim_ra_cube_id 
+    , stdpre.assessment_date    
+
+    -- --analytical dimensions
+    , pred.assessment_mode_id 
+    , pred.assessment_type_id
+    , pred.assessment_organizer_id 
+    , pred.question_subject_id 
+    , pred.question_sub_subject_id
+    , pred.question_topic_id
+    , pred.question_sub_topic_id 
+    , pred.question_objective_id 
+
+    -- --student dimensions
+    , pred.study_circle_student_id
+    , pred.student_roll_number
+    , pred.student_name
+    , pred.student_profile_pic_url
+
+    -- --study_circle dimensions
+    , pred.institution_id 
+    , pred.study_circle_ref_parent_gsc_id
+    , pred.study_circle_name
+
+    -- --question dimensions
+    , pred.question_subject_name
+    
+    -- --performance measures
+    , stdpre.sum_response_time_taken 
+    , stdpre.sum_response_main_score 
+    , stdpre.sum_response_accuracy_score 
+    , stdpre.sum_response_speed_score 
+    , stdpre.sum_response_difficulty_score 
+    , stdpre.sum_response_velocity 
+
+    -- --count measures
+    , stdpre.count_total_responses 
+    , stdpre.count_correct_responses 
+    , stdpre.count_incorrect_responses 
+    , stdpre.count_near_correct_responses 
+    , stdpre.count_not_answered_responses 
+    , stdpre.count_absent_responses 
+    , stdpre.count_present_responses 
+    , stdpre.count_hand_raises
+
+    -- -- --audit fields
+    , stdpre.ts AS ts
+
+    -- --assessment and question history
+    , stdpre.arr_assessment_questions
+
+    -- --calculating the average score
+    , premd.avg_response_main_score
+
+    -- --calculating average read velocity
+    , premd.avg_response_velocity
+
+    -- --calculating average accuracy
+    , premd.avg_response_accuracy_score
+
+    -- --calculating avg time taken
+    , premd.avg_response_time_taken
+
+    -- --answered responses
+    , premd.count_answered_responses
+
+   -- -- difficulty_wise_results
+    , predr.arr_difficulty_wise_results
+
+    -- measures history
+    , stdpre.measures_history
+
+    -- --postops
+    , premd.count_student_in_sc
+    , premd.count_student_in_gsc
+    , premd.sum_response_velocity_sc
+    , premd.sum_response_velocity_gsc
+    , premd.sum_response_accuracy_score_gsc
+    , premd.sum_response_main_score_gsc
+    , premd.sum_response_time_taken_gsc
+    , premd.count_present_responses_sc
+    , premd.count_present_responses_gsc
+    , premd.avg_response_velocity_sc
+    , premd.avg_response_velocity_gsc
+    , premd.avg_response_accuracy_score_gsc
+    , premd.avg_response_main_score_gsc
+    , premd.avg_response_time_taken_gsc
+    , premd.count_answered_responses_gsc
+
+FROM readanalytics.df_prerpt_sc_stu_rac_day_measures stdpre
+LEFT JOIN readanalytics.df_prerpt_sc_stu_rac_day_measures_derived premd
+ON premd.student_id = stdpre.student_id
+AND premd.study_circle_id = stdpre.study_circle_id 
+AND premd.dim_ra_cube_id = stdpre.dim_ra_cube_id 
+AND premd.assessment_date = stdpre.assessment_date
+LEFT JOIN readanalytics.df_prerpt_sc_stu_rac_day_arr_difficulty_wise_results predr 
+ON predr.student_id = stdpre.student_id
+AND predr.study_circle_id = stdpre.study_circle_id 
+AND predr.dim_ra_cube_id = stdpre.dim_ra_cube_id 
+AND predr.assessment_date = stdpre.assessment_date
+LEFT JOIN `readanalytics.df_prerpt_sc_stu_rac_day_dimensions` pred
+ON pred.student_id = stdpre.student_id
+AND pred.study_circle_id = stdpre.study_circle_id 
+AND pred.dim_ra_cube_id = stdpre.dim_ra_cube_id 
+AND pred.assessment_date = stdpre.assessment_date
+

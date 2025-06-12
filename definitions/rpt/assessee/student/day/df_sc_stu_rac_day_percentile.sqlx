@@ -1,0 +1,29 @@
+config {
+  type: "table",
+  dependencies: "df_gsc_rac_day_offset"
+}
+pre_operations {
+    SET @@query_label =
+      "step:df_sc_stu_rac_day_percentile, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+SELECT 
+    rpt.student_id,
+    rpt.dim_ra_cube_id,
+    rpt.assessment_date,
+    rpt.study_circle_id,
+    rpt.avg_response_velocity,
+    CASE 
+        WHEN os.quantile IS NULL AND rpt.avg_response_velocity IS NULL THEN NULL
+        WHEN os.quantile IS NULL THEN 99.9
+        ELSE os.quantile / 10 
+    END AS percentile_gsc
+FROM readanalytics.rpt_sc_stu_rac_day rpt
+LEFT JOIN readanalytics.df_gsc_rac_day_offset os
+ON rpt.dim_ra_cube_id = os.dim_ra_cube_id
+   AND rpt.assessment_date = os.assessment_date
+   AND rpt.study_circle_ref_parent_gsc_id = os.study_circle_ref_parent_gsc_id
+   AND rpt.avg_response_velocity >= os.lower_bound
+   AND rpt.avg_response_velocity < os.upper_bound
+WHERE rpt.assessment_date IN (${dataform.projectConfig.vars.assessment_date_list})
+

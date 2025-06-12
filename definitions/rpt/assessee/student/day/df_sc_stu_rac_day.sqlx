@@ -1,0 +1,93 @@
+config {
+  type: "table",
+  dependencies: "df_sc_stu_day"
+}
+pre_operations {
+    SET @@query_label =
+      "step:df_sc_stu_rac_day, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+WITH cte AS (
+SELECT
+    -- --primary keys
+    TO_HEX(MD5(
+      CONCAT(COALESCE(CAST(assessment_mode_id AS STRING), 'null'), '-',
+            COALESCE(CAST(assessment_type_id AS STRING), 'null'), '-',
+            COALESCE(CAST(assessment_organizer_id AS STRING), 'null'), '-',
+            COALESCE(CAST(question_subject_id AS STRING), 'null'), '-',
+            COALESCE(CAST(question_sub_subject_id AS STRING), 'null'), '-',
+            COALESCE(CAST(question_topic_id AS STRING), 'null'), '-',
+            COALESCE(CAST(question_sub_topic_id AS STRING), 'null'), '-',
+            COALESCE(CAST(question_objective_id AS STRING), 'null')
+    ))) AS dim_ra_cube_id
+
+    , study_circle_id
+    , student_id
+    , assessment_date
+
+    , assessment_mode_id
+    , assessment_type_id
+    , assessment_organizer_id
+    , question_subject_id
+    , question_sub_subject_id
+    , question_topic_id
+    , question_sub_topic_id
+    , question_objective_id
+
+    -- --performance measures
+    , SUM(sum_response_time_taken) AS sum_response_time_taken
+    , SUM(sum_response_main_score) AS sum_response_main_score 
+    , SUM(sum_response_accuracy_score) AS sum_response_accuracy_score
+    , SUM(sum_response_speed_score) AS sum_response_speed_score
+    , SUM(sum_response_difficulty_score) AS sum_response_difficulty_score
+    , SUM(sum_response_velocity) AS sum_response_velocity
+
+    --count measures
+    , SUM(count_total_responses) AS count_total_responses
+    , SUM(count_correct_responses) AS count_correct_responses  
+    , SUM(count_incorrect_responses) AS count_incorrect_responses
+    , SUM(count_near_correct_responses ) AS count_near_correct_responses  
+    , SUM(count_not_answered_responses) AS count_not_answered_responses
+    , SUM(count_absent_responses) AS count_absent_responses 
+    , SUM(count_present_responses ) AS count_present_responses 
+
+    -- --audit fields
+    , MAX(ts) as ts 
+
+    -- --handraises
+    , SUM(count_hand_raises) AS count_hand_raises
+
+    -- --assessment and question history
+    , ARRAY_CONCAT_AGG(arr_assessment_questions) AS arr_assessment_questions
+
+    -- --array of assessments
+    , ARRAY_CONCAT_AGG(arr_assessments) AS arr_assessments    
+
+FROM readanalytics.df_sc_stu_day
+GROUP BY CUBE (
+    -- analytics dimensions
+    assessment_mode_id
+    , assessment_type_id
+    , assessment_organizer_id
+    , question_subject_id
+    , question_sub_subject_id
+    , question_topic_id
+    , question_sub_topic_id
+    , question_objective_id
+
+    -- --primary keys
+    , study_circle_id
+    , student_id
+    , assessment_date
+ )
+ HAVING
+     assessment_date IS NOT NULL 
+     AND study_circle_id IS NOT NULL 
+     AND student_id IS NOT NULL
+)
+SELECT *
+FROM cte 
+WHERE 
+( question_subject_id IS NOT NULL  OR (question_subject_id IS NULL AND question_sub_subject_id IS NULL) )
+AND (question_sub_subject_id IS NOT NULL  OR (question_sub_subject_id IS NULL AND question_topic_id IS NULL) )
+AND (question_topic_id IS NOT NULL  OR (question_topic_id IS NULL AND question_sub_topic_id IS NULL))

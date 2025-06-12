@@ -1,0 +1,22 @@
+config {
+  type: "table",
+  dependencies: "df_sc_rac_day_arr_stu_vel"
+}
+pre_operations {
+    SET @@query_label =
+      "step: df_sc_rac_day_rank, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+
+SELECT 
+    study_circle_id,
+    assessment_date,
+    dim_ra_cube_id,  
+    ARRAY( SELECT AS STRUCT student_id, avg_response_velocity,
+           CASE 
+              WHEN avg_response_velocity IS NOT NULL 
+              THEN RANK() OVER (PARTITION BY study_circle_id,assessment_date,dim_ra_cube_id ORDER BY avg_response_velocity DESC) 
+            ELSE NULL
+            END AS rank_stu_in_sc
+           FROM UNNEST(arr_stu_vel)) arr_stu_vel_rank
+FROM readanalytics.df_sc_rac_day_arr_stu_vel

@@ -1,0 +1,21 @@
+config {
+  type: "table",
+  dependencies: "rpt_gsc_rac_day_percentile"
+}
+pre_operations {
+    SET @@query_label =
+      "step:df_gsc_rac_day_offset, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+
+SELECT 
+        post.dim_ra_cube_id,
+        post.assessment_date,
+        post.study_circle_ref_parent_gsc_id,
+        OFFSET + 1 AS quantile,
+        post.quantiles[OFFSET] AS lower_bound,
+        post.quantiles[OFFSET + 1] AS upper_bound
+    FROM readanalytics.rpt_gsc_rac_day_percentile post,
+    UNNEST(post.quantiles) WITH OFFSET
+    WHERE OFFSET < ARRAY_LENGTH(post.quantiles) - 1
+    AND assessment_date IN (${dataform.projectConfig.vars.assessment_date_list})

@@ -1,0 +1,8 @@
+config {
+    type: "operations",
+    dependencies: ["rpt_sc_stu_rac_day_percentile","rpt_sc_rac_day_percentile"]
+}
+SET @@query_label =
+  "step:end_day_load, " ||
+  "batch_id: ${dataform.projectConfig.vars.batch_id}";
+SELECT 1 AS VALUE

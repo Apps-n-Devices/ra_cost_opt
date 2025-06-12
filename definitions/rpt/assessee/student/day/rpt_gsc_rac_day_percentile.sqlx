@@ -1,0 +1,23 @@
+config {
+  type: "incremental",
+  protected: true,
+  uniqueKey: ["dim_ra_cube_id","study_circle_ref_parent_gsc_id","assessment_date"],
+  dependencies: ["rpt_sc_stu_rac_day"]       
+}
+pre_operations {
+    SET @@query_label =
+      "step:rpt_gsc_rac_day_percentile, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+
+SELECT  
+    study_circle_ref_parent_gsc_id
+    , dim_ra_cube_id
+    , assessment_date
+    , APPROX_QUANTILES(avg_response_velocity, 1000) AS quantiles
+FROM readanalytics.rpt_sc_stu_rac_day
+WHERE assessment_date IN (${dataform.projectConfig.vars.assessment_date_list})
+GROUP BY  
+    study_circle_ref_parent_gsc_id
+    , dim_ra_cube_id
+    , assessment_date

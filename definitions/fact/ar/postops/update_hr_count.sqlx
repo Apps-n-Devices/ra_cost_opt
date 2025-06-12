@@ -1,6 +1,6 @@
 config {
   type: "operations",
-  dependencies: ["fact_ah","fact_ar"]
+  dependencies: ["fact_ar","fact_ah"]
 }
 SET @@query_label =
   "step:update_hr_count, " ||

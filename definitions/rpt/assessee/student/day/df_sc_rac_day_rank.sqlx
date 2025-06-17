@@ -19,4 +19,4 @@ SELECT
             ELSE NULL
             END AS rank_stu_in_sc
            FROM UNNEST(arr_stu_vel)) arr_stu_vel_rank
-FROM readanalytics.df_sc_rac_day_arr_stu_vel
+FROM dataform.df_sc_rac_day_arr_stu_vel

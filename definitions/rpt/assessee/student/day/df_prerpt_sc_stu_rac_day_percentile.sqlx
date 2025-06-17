@@ -38,8 +38,8 @@ SELECT
     ORDER BY assessment_date DESC
     LIMIT 12
   ) AS percentile_gsc_history
-FROM readanalytics.df_sc_stu_rac_day_percentile_history hist
-LEFT JOIN readanalytics.rpt_sc_stu_rac_day_percentile rstd 
+FROM dataform.df_sc_stu_rac_day_percentile_history hist
+LEFT JOIN dataform.rpt_sc_stu_rac_day_percentile rstd 
 ON  hist.study_circle_id = rstd.study_circle_id
 AND hist.dim_ra_cube_id = rstd.dim_ra_cube_id
 AND hist.assessment_date= rstd.assessment_date

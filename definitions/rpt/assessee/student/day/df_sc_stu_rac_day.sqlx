@@ -43,12 +43,12 @@ SELECT
     , SUM(sum_response_velocity) AS sum_response_velocity
 
     --count measures
-    , SUM(count_total_responses) AS count_total_responses
+    -- , SUM(count_total_responses) AS count_total_responses
     , SUM(count_correct_responses) AS count_correct_responses  
     , SUM(count_incorrect_responses) AS count_incorrect_responses
     , SUM(count_near_correct_responses ) AS count_near_correct_responses  
     , SUM(count_not_answered_responses) AS count_not_answered_responses
-    , SUM(count_absent_responses) AS count_absent_responses 
+    -- , SUM(count_absent_responses) AS count_absent_responses 
     , SUM(count_present_responses ) AS count_present_responses 
 
     -- --audit fields
@@ -63,7 +63,7 @@ SELECT
     -- --array of assessments
     , ARRAY_CONCAT_AGG(arr_assessments) AS arr_assessments    
 
-FROM readanalytics.df_sc_stu_day
+FROM dataform.df_sc_stu_day
 GROUP BY CUBE (
     -- analytics dimensions
     assessment_mode_id
@@ -91,3 +91,4 @@ WHERE
 ( question_subject_id IS NOT NULL  OR (question_subject_id IS NULL AND question_sub_subject_id IS NULL) )
 AND (question_sub_subject_id IS NOT NULL  OR (question_sub_subject_id IS NULL AND question_topic_id IS NULL) )
 AND (question_topic_id IS NOT NULL  OR (question_topic_id IS NULL AND question_sub_topic_id IS NULL))
+

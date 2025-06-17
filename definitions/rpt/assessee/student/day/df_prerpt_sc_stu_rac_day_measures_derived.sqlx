@@ -1,13 +1,12 @@
 config {
-  type: "table",
-  dependencies: ["df_prerpt_sc_stu_rac_day_measures","rpt_sc_rac_day"]
+  type: "table"
 }
 pre_operations {
     SET @@query_label =
       "step:df_prerpt_sc_stu_rac_day_measures_derived, " ||
       "batch_id: ${dataform.projectConfig.vars.batch_id}";
 }
-SELECT --492376
+SELECT
   -- --primary keys
     df.study_circle_id 
   , df.student_id 
@@ -37,5 +36,5 @@ SELECT --492376
 
     -- --answered responses
   , df.count_present_responses - df.count_not_answered_responses AS count_answered_responses
-FROM readanalytics.df_prerpt_sc_stu_rac_day_measures df
+FROM dataform.df_prerpt_sc_stu_rac_day_measures df
 LEFT JOIN `readanalytics.rpt_sc_rac_day` rsc ON df.study_circle_id = rsc.study_circle_id AND df.assessment_date = rsc.assessment_date AND df.dim_ra_cube_id = rsc.dim_ra_cube_id AND rsc.assessment_date IN (${dataform.projectConfig.vars.assessment_date_list})

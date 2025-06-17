@@ -1,6 +1,5 @@
 config {
-    type: "operations",
-    dependencies: ["rpt_sc_stu_rac_day_percentile","rpt_sc_rac_day_percentile"]
+    type: "operations"
 }
 SET @@query_label =
   "step:end_day_load, " ||

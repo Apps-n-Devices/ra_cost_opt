@@ -15,7 +15,7 @@ SELECT
     , dim_ra_cube_id
     , assessment_date
     , APPROX_QUANTILES(avg_response_velocity, 1000) AS quantiles
-FROM readanalytics.rpt_sc_stu_rac_day
+FROM dataform.rpt_sc_stu_rac_day
 WHERE assessment_date IN (${dataform.projectConfig.vars.assessment_date_list})
 GROUP BY  
     study_circle_ref_parent_gsc_id

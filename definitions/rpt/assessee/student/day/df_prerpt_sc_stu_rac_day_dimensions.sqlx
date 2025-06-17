@@ -38,8 +38,8 @@ pre_operations {
     -- -- --question dimensions
     , msu.display_name AS question_subject_name
     
-FROM readanalytics.df_prerpt_sc_stu_rac_day_measures stdpre
-LEFT JOIN readanalytics.dim_ra_cube drc ON stdpre.dim_ra_cube_id = drc.id
+FROM dataform.df_prerpt_sc_stu_rac_day_measures stdpre
+LEFT JOIN dataform.dim_ra_cube drc ON stdpre.dim_ra_cube_id = drc.id
 LEFT JOIN readanalytics.master_subject msu ON drc.question_subject_id = msu.id and msu.is_active = true
 LEFT JOIN readanalytics.master_study_circle msc ON stdpre.study_circle_id = msc.id and msc.is_active = true
 LEFT JOIN `readanalytics.master_academic_period` mip ON mip.board_id = msu.board_id AND stdpre.assessment_date BETWEEN mip.start_date AND mip.end_date and mip.is_active = true

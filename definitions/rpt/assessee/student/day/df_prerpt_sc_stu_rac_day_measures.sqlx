@@ -24,12 +24,10 @@ SELECT
     , readanalytics.safe_add(std.sum_response_velocity,rstd.sum_response_velocity) AS sum_response_velocity
     
    -- -- Count measures
-    , CAST(readanalytics.safe_add(std.count_total_responses,rstd.count_total_responses) AS INT64) AS count_total_responses
     , CAST(readanalytics.safe_add(std.count_correct_responses,rstd.count_correct_responses) AS INT64) AS count_correct_responses
     , CAST(readanalytics.safe_add(std.count_incorrect_responses,rstd.count_incorrect_responses) AS INT64) AS count_incorrect_responses
     , CAST(readanalytics.safe_add(std.count_near_correct_responses, rstd.count_near_correct_responses) AS INT64) AS count_near_correct_responses
     , CAST(readanalytics.safe_add(std.count_not_answered_responses,rstd.count_not_answered_responses) AS INT64) AS count_not_answered_responses
-    , CAST(readanalytics.safe_add(std.count_absent_responses,rstd.count_absent_responses) AS INT64) AS count_absent_responses
     , CAST(readanalytics.safe_add(std.count_present_responses,rstd.count_present_responses) AS INT64) AS count_present_responses
 
     -- Audit fields
@@ -43,12 +41,10 @@ SELECT
       SELECT AS STRUCT 
       assessment_id
       , question_id
-      , SUM(count_total_responses) AS count_total_responses
       , SUM(count_correct_responses) AS count_correct_responses
       , SUM(count_incorrect_responses) AS count_incorrect_responses
       , SUM(count_near_correct_responses) AS count_near_correct_responses
       , SUM(count_not_answered_responses) AS count_not_answered_responses
-      , SUM(count_absent_responses) AS count_absent_responses
       FROM
       (
         SELECT AS STRUCT * FROM UNNEST(std.arr_assessment_questions) as s
@@ -78,16 +74,17 @@ SELECT
    ) AS measures_history
 
 
-FROM readanalytics.df_sc_stu_rac_day std
+FROM dataform.df_sc_stu_rac_day std
 LEFT JOIN
-    readanalytics.rpt_sc_stu_rac_day rstd
+    dataform.rpt_sc_stu_rac_day rstd
     ON std.dim_ra_cube_id = rstd.dim_ra_cube_id
     AND std.study_circle_id = rstd.study_circle_id
     AND std.student_id = rstd.student_id 
     AND std.assessment_date = rstd.assessment_date
-    AND rstd.assessment_date IN (${dataform.projectConfig.vars.assessment_date_list})
+    -- AND rstd.assessment_date IN (${dataform.projectConfig.vars.assessment_date_list})
+    AND rstd.assessment_date IS NOT NULL
 LEFT JOIN
-    readanalytics.df_sc_stu_rac_day_measures_history mh
+    dataform.df_sc_stu_rac_day_measures_history mh
     ON std.dim_ra_cube_id = mh.dim_ra_cube_id
     AND std.study_circle_id = mh.study_circle_id
     AND std.student_id = mh.student_id 

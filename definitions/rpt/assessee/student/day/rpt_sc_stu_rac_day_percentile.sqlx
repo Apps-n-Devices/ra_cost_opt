@@ -22,4 +22,4 @@ SELECT
   , trnd.percentile_gsc_history
   , trnd.trend_percentile_gsc
   , trnd.rank_stu_in_sc
-FROM readanalytics.df_prerpt_sc_stu_rac_day_percentile_trend trnd
+FROM dataform.df_prerpt_sc_stu_rac_day_percentile_trend trnd

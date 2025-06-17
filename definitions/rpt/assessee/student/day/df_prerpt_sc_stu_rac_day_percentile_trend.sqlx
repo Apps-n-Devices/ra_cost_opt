@@ -41,4 +41,4 @@ SELECT
         WITH OFFSET as rnum
       )
     ) as trend_percentile_gsc
-FROM readanalytics.df_prerpt_sc_stu_rac_day_percentile rday
+FROM dataform.df_prerpt_sc_stu_rac_day_percentile rday

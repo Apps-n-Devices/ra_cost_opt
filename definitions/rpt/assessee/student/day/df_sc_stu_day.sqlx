@@ -32,12 +32,12 @@ WITH CTE AS(SELECT
     , SUM(sum_response_velocity) AS sum_response_velocity
 
     --count measures
-    , SUM(count_total_responses) AS count_total_responses
+    -- , SUM(count_total_responses) AS count_total_responses
     , SUM(count_correct_responses) AS count_correct_responses  
     , SUM( count_incorrect_responses) AS count_incorrect_responses
     , SUM(count_near_correct_responses) AS count_near_correct_responses  
     , SUM(count_not_answered_responses) AS count_not_answered_responses
-    , SUM(count_absent_responses) AS count_absent_responses 
+    -- , SUM(count_absent_responses) AS count_absent_responses 
     , SUM(count_present_responses) AS count_present_responses 
 
     -- --audit fields
@@ -50,19 +50,19 @@ WITH CTE AS(SELECT
     ,ARRAY_AGG(STRUCT(
       assessment_id
       , question_id
-      , count_total_responses
+      -- , count_total_responses
       , count_correct_responses
       , count_incorrect_responses
       , count_near_correct_responses
       , count_not_answered_responses 
-      , count_absent_responses     
+      -- , count_absent_responses     
     )) as arr_assessment_questions
 
     -- --array of assessments
     , ARRAY_AGG(STRUCT(assessment_id)) AS arr_assessments
 
-FROM readanalytics.fact_ar
-WHERE ts > '${dataform.projectConfig.vars.batch_start_ts}' AND ts <= '${dataform.projectConfig.vars.batch_end_ts}'
+FROM dataform.fact_ar
+-- WHERE ts > '${dataform.projectConfig.vars.batch_start_ts}' AND ts <= '${dataform.projectConfig.vars.batch_end_ts}'
 GROUP BY
    -- --primary keys
       study_circle_id   
@@ -103,12 +103,12 @@ SELECT    -- --primary keys
     , sum_response_velocity
 
     --count measures
-    , count_total_responses
+    -- , count_total_responses
     , count_correct_responses  
     , count_incorrect_responses
     , count_near_correct_responses  
     , count_not_answered_responses
-    , count_absent_responses 
+    -- , count_absent_responses 
     , count_present_responses 
   
     -- --audit fields
@@ -126,7 +126,3 @@ SELECT    -- --primary keys
       FROM UNNEST(arr_assessments)
       ) AS arr_assessments
 FROM CTE
-
-
-
-

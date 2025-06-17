@@ -15,7 +15,7 @@ SELECT
         OFFSET + 1 AS quantile,
         post.quantiles[OFFSET] AS lower_bound,
         post.quantiles[OFFSET + 1] AS upper_bound
-    FROM readanalytics.rpt_gsc_rac_day_percentile post,
+    FROM dataform.rpt_gsc_rac_day_percentile post,
     UNNEST(post.quantiles) WITH OFFSET
     WHERE OFFSET < ARRAY_LENGTH(post.quantiles) - 1
     AND assessment_date IN (${dataform.projectConfig.vars.assessment_date_list})

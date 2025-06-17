@@ -1,0 +1,14 @@
+config {
+    type: "table",
+    dependencies: ["stg_absent_not_answered_ar", "begin_fact_load"]
+}
+
+SELECT stg.stg_id as stg_id
+  , CAST(JSON_EXTRACT_SCALAR(stg.raft_assessment_absent_json, '$.assessment_id') AS STRING) AS assessment_id
+  , CAST(SUBSTR(JSON_EXTRACT_SCALAR(stg.raft_assessment_absent_json, '$.assessment_date'), 1, 10) AS DATE) AS assessment_date
+  , CAST(JSON_EXTRACT_SCALAR(stg.raft_assessment_absent_json, '$.institution_id') AS INT64) AS institution_id
+  , CAST(JSON_EXTRACT_SCALAR(stg.raft_assessment_absent_json, '$.study_circle_id') AS INT64) AS study_circle_id
+  , CAST(student_id AS INT64) AS student_id
+  , ts
+FROM readanalytics.stg_absent_not_answered_ar AS stg
+    , UNNEST(JSON_EXTRACT_ARRAY(stg.raft_assessment_absent_json, '$.student_ids')) AS student_id

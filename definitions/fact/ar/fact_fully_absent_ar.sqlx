@@ -1,0 +1,14 @@
+config {
+    type: "incremental",
+    dependencies: "df_dedup_stg_fully_absent_ar",
+    protected: false
+}
+
+SELECT 
+stg_id
+, assessment_id
+, assessment_date
+, institution_id
+, study_circle_id
+, ts
+FROM dataform.df_dedup_stg_fully_absent_ar

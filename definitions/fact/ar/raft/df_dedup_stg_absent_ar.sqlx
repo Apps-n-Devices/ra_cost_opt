@@ -1,0 +1,22 @@
+config {
+    type: "table",
+    dependencies: "df_unnest_stg_absent_ar"
+}
+WITH stg_unnest_deduped AS (
+  SELECT stg_unnest.*
+    , ROW_NUMBER()
+      OVER (
+        PARTITION BY 
+          stg_unnest.assessment_id
+          , stg_unnest.student_id
+        ORDER BY stg_unnest.ts ASC
+      ) AS row_num
+  FROM dataform.df_unnest_stg_absent_ar stg_unnest
+  LEFT JOIN `dataform.fact_absent_ar` fact_ar 
+    ON stg_unnest.assessment_id = fact_ar.assessment_id
+    AND stg_unnest.student_id = fact_ar.student_id
+  WHERE fact_ar.assessment_id IS NULL --remove duplication with fact_ar table
+)
+SELECT *
+FROM stg_unnest_deduped
+WHERE row_num = 1 

@@ -14,15 +14,14 @@ student_id
 , dim_ra_cube_id,
  ARRAY(SELECT AS STRUCT
   q.difficulty_level AS question_difficulty_level
-  , SUM(count_total_responses) as count_total_responses
+  -- , SUM(count_total_responses) as count_total_responses
   , SUM(count_correct_responses) as count_correct_responses
   , SUM(count_incorrect_responses) as count_incorrect_responses
   , SUM(count_near_correct_responses) as count_near_correct_responses
   , SUM(count_not_answered_responses) as count_not_answered_responses
   FROM(
     SELECT AS STRUCT * FROM UNNEST(preday.arr_assessment_questions) 
-    WHERE count_absent_responses = 0
   ) AS difficulty_wise_results
   JOIN readanalytics.qb_question q ON q.id = difficulty_wise_results.question_id
   GROUP BY question_difficulty_level) as arr_difficulty_wise_results
-  FROM readanalytics.df_prerpt_sc_stu_rac_day_measures preday
+  FROM dataform.df_prerpt_sc_stu_rac_day_measures preday

@@ -18,8 +18,8 @@ SELECT
         WHEN os.quantile IS NULL THEN 99.9
         ELSE os.quantile / 10 
     END AS percentile_gsc
-FROM readanalytics.rpt_sc_stu_rac_day rpt
-LEFT JOIN readanalytics.df_gsc_rac_day_offset os
+FROM dataform.rpt_sc_stu_rac_day rpt
+LEFT JOIN dataform.df_gsc_rac_day_offset os
 ON rpt.dim_ra_cube_id = os.dim_ra_cube_id
    AND rpt.assessment_date = os.assessment_date
    AND rpt.study_circle_ref_parent_gsc_id = os.study_circle_ref_parent_gsc_id

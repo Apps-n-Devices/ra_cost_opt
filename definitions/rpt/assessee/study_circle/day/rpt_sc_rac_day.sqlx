@@ -1,0 +1,144 @@
+config {
+  type: "incremental",
+   protected: true,
+  uniqueKey: ["dim_ra_cube_id","assessment_date","study_circle_id"],
+  dependencies: ["df_prerpt_sc_rac_day_arr_difficulty_wise_results"
+                 ,"df_prerpt_sc_rac_day_countdistinct_total_questions"
+                 ,"df_prerpt_sc_rac_day_measures_derived"
+                 ,"df_prerpt_sc_rac_day_arr_assessments"
+                 ,"df_prerpt_sc_rac_day_dimensions"
+                 ,"df_prerpt_sc_rac_day_count_total_assessments"] ,
+  bigquery: {
+    updatePartitionFilter:
+        "assessment_date is not null"
+  }
+}
+pre_operations {
+    SET @@query_label =
+      "step:rpt_sc_rac_day, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+SELECT 
+    -- --primary keys
+      scdpre.study_circle_id
+    , scdpre.dim_ra_cube_id    
+    , scdpre.assessment_date
+
+    -- --analytical dimensions
+    , predim.assessment_mode_id
+    , predim.assessment_type_id
+    , predim.assessment_organizer_id
+    , predim.question_subject_id
+    , predim.question_sub_subject_id
+    , predim.question_topic_id 
+    , predim.question_sub_topic_id
+    , predim.question_objective_id
+
+    --assessment type name
+    , predim.assessment_type_name
+
+    --organizer name 
+    , predim.assessment_organizer_name 
+
+    --assessment mode name
+    , predim.assessment_mode_name
+    
+    -- --topic name
+    , predim.question_topic_name
+
+    -- --study_circle dimensions
+    , predim.institution_id 
+    , predim.study_circle_ref_parent_gsc_id
+    , predim.study_circle_name
+
+    -- --question dimensions
+    , predim.question_subject_name
+    
+
+    -- -- --performance measures
+    , scdpre.sum_response_time_taken
+    , scdpre.sum_response_main_score
+    , scdpre.sum_response_accuracy_score
+    , scdpre.sum_response_speed_score
+    , scdpre.sum_response_difficulty_score
+    , scdpre.sum_response_velocity
+
+    -- --count measures
+    , scdpre.count_total_responses
+    , scdpre.count_correct_responses
+    , scdpre.count_incorrect_responses
+    , scdpre.count_near_correct_responses
+    , scdpre.count_not_answered_responses
+    , scdpre.count_absent_responses
+    , scdpre.count_present_responses
+    , scdpre.count_hand_raises
+    , premd.count_answered_responses
+    , precq.countdistinct_total_questions
+    , preca.count_total_assessments
+    , scdpre.count_student_in_sc
+    , premd.count_student_in_gsc
+
+    -- measures history
+    , scdpre.measures_history
+
+    -- --calculating the average score
+    , premd.avg_response_main_score
+
+    -- --calculating average read velocity
+    , premd.avg_response_velocity
+
+    -- --calculating average accuracy
+    , premd.avg_response_accuracy_score
+
+    -- --calculating avg time taken
+    , premd.avg_response_time_taken
+
+    -- --assessment question history
+    , scdpre.arr_assessment_questions
+
+    -- --difficulty wise reults
+    , predr.arr_difficulty_wise_results
+
+    -- --array of assessment
+    , arrass.arr_assessments
+    
+    -- -- --audit fields
+    , scdpre.ts
+
+    -- --postops
+    , premd.count_sc_in_gsc
+    , premd.sum_response_velocity_gsc
+    , premd.sum_response_accuracy_score_gsc
+    , premd.sum_response_main_score_gsc
+    , premd.sum_response_time_taken_gsc
+    , premd.count_present_responses_gsc
+    , premd.count_answered_responses_gsc
+    , premd.avg_response_velocity_gsc
+    , premd.avg_response_accuracy_score_gsc
+    , premd.avg_response_main_score_gsc
+    , premd.avg_response_time_taken_gsc
+FROM readanalytics.df_prerpt_sc_rac_day_measures scdpre
+LEFT JOIN readanalytics.df_prerpt_sc_rac_day_countdistinct_total_questions precq 
+ON precq.study_circle_id = scdpre.study_circle_id 
+AND precq.dim_ra_cube_id = scdpre.dim_ra_cube_id 
+AND precq.assessment_date = scdpre.assessment_date
+LEFT JOIN readanalytics.df_prerpt_sc_rac_day_arr_difficulty_wise_results predr 
+ON predr.study_circle_id = scdpre.study_circle_id 
+AND predr.dim_ra_cube_id = scdpre.dim_ra_cube_id 
+AND predr.assessment_date = scdpre.assessment_date
+LEFT JOIN readanalytics.df_prerpt_sc_rac_day_measures_derived premd
+ON premd.study_circle_id = scdpre.study_circle_id 
+AND premd.dim_ra_cube_id = scdpre.dim_ra_cube_id 
+AND premd.assessment_date = scdpre.assessment_date
+LEFT JOIN readanalytics.df_prerpt_sc_rac_day_arr_assessments arrass
+ON arrass.study_circle_id = scdpre.study_circle_id 
+AND arrass.dim_ra_cube_id = scdpre.dim_ra_cube_id 
+AND arrass.assessment_date = scdpre.assessment_date
+LEFT JOIN readanalytics.df_prerpt_sc_rac_day_dimensions predim
+ON predim.study_circle_id = scdpre.study_circle_id 
+AND predim.dim_ra_cube_id = scdpre.dim_ra_cube_id 
+AND predim.assessment_date = scdpre.assessment_date
+LEFT JOIN readanalytics.df_prerpt_sc_rac_day_count_total_assessments preca
+ON preca.study_circle_id = scdpre.study_circle_id 
+AND preca.dim_ra_cube_id = scdpre.dim_ra_cube_id 
+AND preca.assessment_date = scdpre.assessment_date

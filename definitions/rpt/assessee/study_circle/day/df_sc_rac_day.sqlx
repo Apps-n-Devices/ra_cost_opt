@@ -1,0 +1,105 @@
+config {
+  type: "table",
+  dependencies: [
+    "df_sc_stu_rac_day"
+  ]
+}
+pre_operations {
+    SET @@query_label =
+      "step:df_sc_rac_day, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+
+WITH cte as(SELECT 
+   -- --primary keys
+     study_circle_id
+   , dim_ra_cube_id
+   , assessment_date
+
+    -- --performance measures
+   , SUM(sum_response_time_taken) AS sum_response_time_taken
+   , SUM(sum_response_main_score) AS sum_response_main_score 
+   , SUM(sum_response_accuracy_score) AS sum_response_accuracy_score
+   , SUM(sum_response_speed_score) AS sum_response_speed_score
+   , SUM(sum_response_difficulty_score) AS sum_response_difficulty_score
+   , SUM(sum_response_velocity) AS sum_response_velocity
+
+    --count measures
+   , SUM(count_total_responses) AS count_total_responses
+   , SUM(count_correct_responses) AS count_correct_responses  
+   , SUM(count_incorrect_responses) AS count_incorrect_responses
+   , SUM(count_near_correct_responses ) AS count_near_correct_responses  
+   , SUM(count_not_answered_responses) AS count_not_answered_responses
+   , SUM(count_absent_responses) AS count_absent_responses 
+   , SUM(count_present_responses ) AS count_present_responses 
+   , SUM(count_hand_raises) AS count_hand_raises
+   , COUNT(student_id) AS count_student_in_sc
+ 
+   -- --assessment question history 
+   , ARRAY_CONCAT_AGG(arr_assessment_questions) AS arr_assessment_questions
+
+    -- --array of assessments
+   , ARRAY_CONCAT_AGG(arr_assessments) AS arr_assessments 
+   
+    -- -- --audit fields
+   , max(ts) AS ts 
+
+FROM readanalytics.df_sc_stu_rac_day
+GROUP BY
+   -- --primary keys
+    study_circle_id
+   , dim_ra_cube_id
+   , assessment_date)
+SELECT 
+  -- --primary keys
+     study_circle_id
+   , dim_ra_cube_id
+   , assessment_date
+
+    -- --performance measures
+   , sum_response_time_taken
+   , sum_response_main_score 
+   , sum_response_accuracy_score
+   , sum_response_speed_score
+   , sum_response_difficulty_score
+   , sum_response_velocity
+
+    --count measures
+   , count_total_responses
+   , count_correct_responses  
+   , count_incorrect_responses
+   , count_near_correct_responses  
+   , count_not_answered_responses
+   , count_absent_responses 
+   , count_present_responses 
+   , count_hand_raises
+   , count_student_in_sc
+ 
+   , ( 
+      SELECT ARRAY_AGG(STRUCT(
+        assessment_id
+      , question_id
+      , count_total_responses
+      , count_correct_responses
+      , count_incorrect_responses
+      , count_near_correct_responses 
+      , count_not_answered_responses
+      , count_absent_responses))
+      FROM (
+        SELECT 
+        assessment_id
+        , question_id
+        , SUM(count_total_responses) AS count_total_responses 
+        , SUM(count_correct_responses) AS count_correct_responses
+        , SUM(count_incorrect_responses) AS count_incorrect_responses
+        , SUM(count_near_correct_responses) AS count_near_correct_responses
+        , SUM(count_not_answered_responses) AS count_not_answered_responses
+        , SUM(count_absent_responses) AS count_absent_responses
+        FROM UNNEST(arr_assessment_questions)
+        GROUP BY assessment_id, question_id
+      )
+   ) AS arr_assessment_questions  
+   , ARRAY(SELECT DISTINCT AS STRUCT assessment_id
+      FROM UNNEST(arr_assessments)) AS arr_assessments 
+   , ts
+FROM cte

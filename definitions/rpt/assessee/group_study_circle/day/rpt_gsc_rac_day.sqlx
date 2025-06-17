@@ -1,0 +1,51 @@
+config {
+  type: "incremental",
+  protected: true,
+  uniqueKey: ["dim_ra_cube_id","assessment_date","group_study_circle_id"],
+  dependencies: ["df_prerpt_gsc_rac_day_measures_derived"] , 
+  bigquery: {
+  updatePartitionFilter:
+      "assessment_date is not null"
+  }         
+}
+pre_operations {
+    SET @@query_label = 
+      "step:rpt_gsc_rac_day, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+SELECT 
+    dim_ra_cube_id
+  , assessment_date
+  , group_study_circle_id
+
+    -- --average
+	, avg_response_main_score
+	, avg_response_velocity
+	, avg_response_accuracy_score
+  , avg_response_time_taken
+
+    -- --answered responses
+  , count_answered_responses
+
+    -- --performance measures
+  , sum_response_time_taken
+  , sum_response_main_score 
+  , sum_response_accuracy_score
+  , sum_response_speed_score
+  , sum_response_difficulty_score
+  , sum_response_velocity
+
+    --count measures
+  , count_total_responses
+  , count_correct_responses  
+  , count_incorrect_responses
+  , count_near_correct_responses  
+  , count_not_answered_responses
+  , count_absent_responses 
+  , count_present_responses
+  , count_sc_in_gsc
+  , count_student_in_gsc
+
+  -- measures_history
+  , measures_history
+FROM readanalytics.df_prerpt_gsc_rac_day_measures_derived

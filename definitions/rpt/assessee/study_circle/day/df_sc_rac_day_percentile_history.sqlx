@@ -1,0 +1,26 @@
+config {
+  type: "table",
+  dependencies: "df_sc_rac_day_percentile"
+}
+pre_operations {
+    SET @@query_label =
+      "step:df_sc_rac_day_percentile_history, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+SELECT 
+    rday.study_circle_id 
+	, rday.dim_ra_cube_id 
+	, rday.assessment_date 
+  , rday.percentile_gsc
+  ,ARRAY_AGG(STRUCT(
+    assessment_date
+  , percentile_gsc
+  )  
+	)  OVER (
+		PARTITION BY 		
+			  rday.study_circle_id 
+			, rday.dim_ra_cube_id 
+		ORDER BY rday.assessment_date DESC
+		RANGE BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING
+	) AS percentile_gsc_history
+FROM readanalytics.df_sc_rac_day_percentile rday

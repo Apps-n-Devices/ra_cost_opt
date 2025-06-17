@@ -1,0 +1,31 @@
+config {
+  type: "table",
+  dependencies: "df_gsc_rac_day"
+}
+pre_operations {
+    SET @@query_label =
+      "step:df_gsc_rac_day_measures_history, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+
+SELECT 
+	  rday.group_study_circle_id 
+	, rday.dim_ra_cube_id 
+	, rday.assessment_date 
+    , ARRAY_AGG(
+        STRUCT(
+      assessment_date
+    , sum_response_velocity
+    , sum_response_accuracy_score
+    , sum_response_main_score
+    , sum_response_time_taken
+    , count_present_responses
+        )  
+	)  OVER (
+		PARTITION BY 		
+			  rday.group_study_circle_id 
+			, rday.dim_ra_cube_id 
+		ORDER BY rday.assessment_date DESC
+		RANGE BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING
+	) AS measures_history
+FROM readanalytics.df_gsc_rac_day rday

@@ -1,0 +1,25 @@
+config {
+  type: "incremental",
+  protected: true,
+  uniqueKey: ["dim_ra_cube_id","study_circle_id","assessment_date"],
+  dependencies: ["df_prerpt_sc_rac_day_percentile_trend"] ,
+  bigquery: {
+    updatePartitionFilter:
+        "assessment_date is not null"
+  }      
+}
+pre_operations {
+    SET @@query_label =
+      "step:rpt_sc_rac_day_percentile, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+SELECT 
+    study_circle_id
+  , assessment_date
+  , dim_ra_cube_id
+  , percentile_gsc
+  , percentile_gsc_history
+  , trend_percentile_gsc
+FROM readanalytics.df_prerpt_sc_rac_day_percentile_trend
+
+

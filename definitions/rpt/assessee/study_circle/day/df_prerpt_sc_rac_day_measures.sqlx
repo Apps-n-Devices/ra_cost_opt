@@ -1,0 +1,101 @@
+config {
+  type: "table",
+  dependencies: "df_sc_rac_day_measures_history"
+}
+pre_operations {
+    SET @@query_label =
+      "step:df_prerpt_sc_rac_day_measures, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+SELECT   
+  -- --primary keys
+      scd.study_circle_id
+    , scd.dim_ra_cube_id
+    , scd.assessment_date
+
+    -- Performance measures
+    , CAST(readanalytics.safe_add(scd.sum_response_time_taken,rscd.sum_response_time_taken) AS INT64) AS sum_response_time_taken
+    , readanalytics.safe_add(scd.sum_response_main_score,rscd.sum_response_main_score) AS sum_response_main_score
+    , readanalytics.safe_add(scd.sum_response_accuracy_score,rscd.sum_response_accuracy_score) AS sum_response_accuracy_score
+    , readanalytics.safe_add(scd.sum_response_speed_score,rscd.sum_response_speed_score) AS sum_response_speed_score
+    , readanalytics.safe_add(scd.sum_response_difficulty_score,rscd.sum_response_difficulty_score) AS sum_response_difficulty_score
+    , readanalytics.safe_add(scd.sum_response_velocity,rscd.sum_response_velocity) AS sum_response_velocity
+    
+   -- -- Count measures
+    , CAST(readanalytics.safe_add(scd.count_total_responses,rscd.count_total_responses) AS INT64) AS count_total_responses
+    , CAST(readanalytics.safe_add(scd.count_correct_responses,rscd.count_correct_responses) AS INT64) AS count_correct_responses
+    , CAST(readanalytics.safe_add(scd.count_incorrect_responses,rscd.count_incorrect_responses) AS INT64) AS count_incorrect_responses
+    , CAST(readanalytics.safe_add(scd.count_near_correct_responses, rscd.count_near_correct_responses) AS INT64) AS count_near_correct_responses
+    , CAST(readanalytics.safe_add(scd.count_not_answered_responses,rscd.count_not_answered_responses) AS INT64) AS count_not_answered_responses
+    , CAST(readanalytics.safe_add(scd.count_absent_responses,rscd.count_absent_responses) AS INT64) AS count_absent_responses
+    , CAST(readanalytics.safe_add(scd.count_present_responses,rscd.count_present_responses) AS INT64) AS count_present_responses
+    , CAST(readanalytics.safe_add(scd.count_hand_raises,rscd.count_hand_raises) AS INT64) AS count_hand_raises
+    , CAST(readanalytics.safe_add(scd.count_student_in_sc,rscd.count_student_in_sc) AS INT64) AS count_student_in_sc
+
+    -- --measures history
+    , ARRAY (
+      SELECT AS STRUCT 
+        assessment_date
+      , SUM(sum_response_velocity) AS sum_response_velocity
+      , SUM(sum_response_accuracy_score) AS sum_response_accuracy_score
+      , SUM(sum_response_main_score) AS sum_response_main_score
+      , SUM(sum_response_time_taken) AS sum_response_time_taken
+      , SUM(count_present_responses) AS count_present_responses
+      FROM
+      (
+        SELECT AS STRUCT * FROM UNNEST(mh.measures_history) as s
+        UNION ALL
+        SELECT AS STRUCT * FROM UNNEST(rscd.measures_history) as r
+      )
+      GROUP BY assessment_date
+      ORDER BY assessment_date DESC
+   ) AS measures_history
+
+    -- --assessment and question history
+      , ARRAY (
+      SELECT AS STRUCT 
+      assessment_id
+      , question_id
+      , SUM(count_total_responses) AS count_total_responses
+      , SUM(count_correct_responses) AS count_correct_responses
+      , SUM(count_incorrect_responses) AS count_incorrect_responses
+      , SUM(count_near_correct_responses) AS count_near_correct_responses
+      , SUM(count_not_answered_responses) AS count_not_answered_responses
+      , SUM(count_absent_responses) AS count_absent_responses
+      FROM
+      (
+        SELECT AS STRUCT * FROM UNNEST(scd.arr_assessment_questions) as s
+        UNION ALL
+        SELECT AS STRUCT * FROM UNNEST(rscd.arr_assessment_questions) as r
+      )
+      GROUP BY assessment_id,question_id
+   ) AS arr_assessment_questions
+
+    , ARRAY (
+      SELECT AS STRUCT 
+      assessment_id
+      FROM
+      (
+        SELECT AS STRUCT * FROM UNNEST(scd.arr_assessments) as s
+        UNION ALL
+        SELECT AS STRUCT assessment_id FROM UNNEST(rscd.arr_assessments) as r
+      )
+      GROUP BY assessment_id
+    ) AS arr_assessments
+
+ -- Audit fields
+   , scd.ts 
+
+FROM readanalytics.df_sc_rac_day scd
+LEFT JOIN
+  readanalytics. rpt_sc_rac_day rscd
+  ON 
+  scd.dim_ra_cube_id = rscd.dim_ra_cube_id
+  AND scd.study_circle_id = rscd.study_circle_id
+  AND scd.assessment_date = rscd.assessment_date
+  AND rscd.assessment_date IN (${dataform.projectConfig.vars.assessment_date_list})
+LEFT JOIN
+    readanalytics.df_sc_rac_day_measures_history mh
+    ON scd.dim_ra_cube_id = mh.dim_ra_cube_id
+    AND scd.study_circle_id = mh.study_circle_id
+    AND scd.assessment_date = mh.assessment_date

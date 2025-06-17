@@ -1,0 +1,47 @@
+config {
+  type: "table",
+  dependencies: ["rpt_gsc_rac_day","df_prerpt_sc_rac_day_measures"]
+}
+pre_operations {
+    SET @@query_label =
+      "step:df_prerpt_sc_rac_day_measures_derived, " ||
+      "batch_id: ${dataform.projectConfig.vars.batch_id}";
+}
+SELECT 
+  -- --primary keys
+    preday.study_circle_id 
+  , preday.dim_ra_cube_id 
+  , preday.assessment_date  
+
+  -- --calculating the average
+  , ROUND(readanalytics.safe_avg(preday.sum_response_main_score,preday.count_present_responses),2) AS avg_response_main_score
+  , ROUND(readanalytics.safe_avg(preday.sum_response_velocity,preday.count_present_responses),2) AS avg_response_velocity
+  , ROUND(readanalytics.safe_avg(preday.sum_response_accuracy_score,preday.count_present_responses),2) AS avg_response_accuracy_score
+  , ROUND(readanalytics.safe_avg(preday.sum_response_time_taken ,(preday.count_present_responses - preday.count_not_answered_responses)),2) AS 
+    avg_response_time_taken
+
+  -- --answered responses
+  , preday.count_present_responses - preday.count_not_answered_responses AS count_answered_responses
+  , rgsc.avg_response_velocity AS avg_response_velocity_gsc
+	, rgsc.avg_response_accuracy_score AS avg_response_accuracy_score_gsc
+	, rgsc.avg_response_main_score AS avg_response_main_score_gsc
+	, rgsc.avg_response_time_taken AS avg_response_time_taken_gsc
+
+    -- --performance measures
+  , rgsc.sum_response_time_taken AS sum_response_time_taken_gsc
+  , rgsc.sum_response_main_score AS sum_response_main_score_gsc
+  , rgsc.sum_response_accuracy_score AS sum_response_accuracy_score_gsc
+  , rgsc.sum_response_velocity AS sum_response_velocity_gsc
+
+    --count measures
+  , rgsc.count_present_responses AS count_present_responses_gsc
+  , rgsc.count_sc_in_gsc
+  , rgsc.count_answered_responses AS count_answered_responses_gsc
+  , rgsc.count_student_in_gsc
+FROM readanalytics.df_prerpt_sc_rac_day_measures preday
+LEFT JOIN `readanalytics.master_study_circle` msc ON preday.study_circle_id = msc.id
+LEFT JOIN `readanalytics.rpt_gsc_rac_day` rgsc 
+ON rgsc.group_study_circle_id = msc.ref_parent_gsc_id 
+AND preday.dim_ra_cube_id = rgsc.dim_ra_cube_id 
+AND preday.assessment_date = rgsc.assessment_date
+AND rgsc.assessment_date IN (${dataform.projectConfig.vars.assessment_date_list})
